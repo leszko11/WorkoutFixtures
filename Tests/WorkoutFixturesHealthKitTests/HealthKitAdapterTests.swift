@@ -75,6 +75,97 @@
     _ = HealthKitAuthorizationController(healthStore: store)
   }
 
+  @Suite("HealthKit query plan")
+  struct HealthKitQueryPlanTests {
+    @Test("Empty query omits the predicate and limit and sorts descending")
+    func emptyQueryOmitsPredicateAndLimit() {
+      let plan = HealthKitQueryPlan(query: WorkoutQuery())
+      #expect(plan.predicate == nil)
+      #expect(plan.limit == nil)
+      #expect(plan.sortDescriptors.map(\.order) == [.reverse])
+    }
+
+    @Test("Date bounds produce a predicate")
+    func dateBoundsProducePredicate() {
+      let startDate = Date(timeIntervalSinceReferenceDate: 0)
+      let endDate = startDate.addingTimeInterval(3_600)
+      let queries = [
+        WorkoutQuery(startDate: startDate),
+        WorkoutQuery(endDate: endDate),
+        WorkoutQuery(startDate: startDate, endDate: endDate),
+      ]
+      for query in queries {
+        #expect(HealthKitQueryPlan(query: query).predicate != nil)
+      }
+    }
+
+    @Test("Activities produce a predicate")
+    func activitiesProducePredicate() {
+      let plan = HealthKitQueryPlan(query: WorkoutQuery(activities: [.running, .cycling]))
+      #expect(plan.predicate != nil)
+    }
+
+    @Test("Dates combined with activities still produce a predicate")
+    func combinedFiltersProducePredicate() {
+      let query = WorkoutQuery(
+        activities: [.walking],
+        startDate: Date(timeIntervalSinceReferenceDate: 0)
+      )
+      #expect(HealthKitQueryPlan(query: query).predicate != nil)
+    }
+
+    @Test("Limit and ascending sort map into the plan")
+    func limitAndSortMapIntoPlan() {
+      let plan = HealthKitQueryPlan(
+        query: WorkoutQuery(sort: .startDateAscending, limit: 5)
+      )
+      #expect(plan.limit == 5)
+      #expect(plan.sortDescriptors.map(\.order) == [.forward])
+    }
+
+    @Test("Negative limits clamp to zero")
+    func negativeLimitClampsToZero() {
+      #expect(HealthKitQueryPlan(query: WorkoutQuery(limit: -3)).limit == 0)
+    }
+  }
+
+  @Suite("Resolved time zone identifier")
+  struct ResolvedTimeZoneIdentifierTests {
+    private let fallback = TimeZone(identifier: "UTC")!
+
+    @Test("Valid metadata identifier wins over the fallback")
+    func validMetadataWins() {
+      let identifier = HealthKitWorkoutSource.resolvedTimeZoneIdentifier(
+        metadata: [HKMetadataKeyTimeZone: "Europe/Warsaw"],
+        fallback: fallback
+      )
+      #expect(identifier == "Europe/Warsaw")
+    }
+
+    @Test("Invalid metadata identifier falls back")
+    func invalidIdentifierFallsBack() {
+      let identifier = HealthKitWorkoutSource.resolvedTimeZoneIdentifier(
+        metadata: [HKMetadataKeyTimeZone: "Not/AZone"],
+        fallback: fallback
+      )
+      #expect(identifier == fallback.identifier)
+    }
+
+    @Test("Missing metadata falls back")
+    func missingMetadataFallsBack() {
+      let fromNil = HealthKitWorkoutSource.resolvedTimeZoneIdentifier(
+        metadata: nil,
+        fallback: fallback
+      )
+      let fromEmpty = HealthKitWorkoutSource.resolvedTimeZoneIdentifier(
+        metadata: [:],
+        fallback: fallback
+      )
+      #expect(fromNil == fallback.identifier)
+      #expect(fromEmpty == fallback.identifier)
+    }
+  }
+
   @Test("Sample chunking preserves order and covers remainders")
   func chunkingCoversAllElements() {
     #expect([Int]().chunked(into: 3).isEmpty)

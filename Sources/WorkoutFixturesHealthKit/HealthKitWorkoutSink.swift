@@ -85,6 +85,13 @@
             try await builder.insertRouteData(chunk)
           }
         }
+        var metadata: [String: Any] = [
+          HKMetadataKeyTimeZone: fixture.workout.timeZoneIdentifier
+        ]
+        if fixture.workout.location != .unknown {
+          metadata[HKMetadataKeyIndoorWorkout] = fixture.workout.location == .indoor
+        }
+        try await builder.addMetadata(metadata)
         try Task.checkCancellation()
         try await builder.endCollection(at: fixture.workout.endDate)
         let workout = try await finish(builder)

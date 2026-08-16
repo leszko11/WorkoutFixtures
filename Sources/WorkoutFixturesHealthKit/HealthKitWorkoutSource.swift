@@ -4,6 +4,48 @@
   import HealthKit
   import WorkoutFixtures
 
+  /// Translates a `WorkoutQuery` into the predicate, sort, and limit that
+  /// `HKSampleQueryDescriptor` understands, so filtering happens inside
+  /// HealthKit instead of in memory.
+  struct HealthKitQueryPlan {
+    let predicate: NSPredicate?
+    let sortDescriptors: [SortDescriptor<HKWorkout>]
+    let limit: Int?
+
+    init(query: WorkoutQuery) {
+      var subpredicates: [NSPredicate] = []
+      if query.startDate != nil || query.endDate != nil {
+        subpredicates.append(
+          HKQuery.predicateForSamples(
+            withStart: query.startDate,
+            end: query.endDate,
+            options: []
+          )
+        )
+      }
+      if !query.activities.isEmpty {
+        let activityPredicates = query.activities
+          .sorted { $0.rawValue < $1.rawValue }
+          .map { HKQuery.predicateForWorkouts(with: $0.healthKitType) }
+        subpredicates.append(
+          NSCompoundPredicate(orPredicateWithSubpredicates: activityPredicates)
+        )
+      }
+      switch subpredicates.count {
+      case 0: predicate = nil
+      case 1: predicate = subpredicates[0]
+      default: predicate = NSCompoundPredicate(andPredicateWithSubpredicates: subpredicates)
+      }
+      sortDescriptors = [
+        SortDescriptor(
+          \.startDate,
+          order: query.sort == .startDateAscending ? .forward : .reverse
+        )
+      ]
+      limit = query.limit.map { max(0, $0) }
+    }
+  }
+
   public struct HealthKitWorkoutSource: WorkoutFixtureSource, Sendable {
     private let healthStore: HKHealthStore
     private let timeZone: TimeZone
@@ -13,28 +55,48 @@
       self.timeZone = timeZone
     }
 
+    /// Prefers the workout's own `HKMetadataKeyTimeZone` and falls back to the
+    /// injected zone when the metadata is absent or names an unknown zone.
+    static func resolvedTimeZoneIdentifier(
+      metadata: [String: Any]?,
+      fallback: TimeZone
+    ) -> String {
+      guard let identifier = metadata?[HKMetadataKeyTimeZone] as? String,
+        TimeZone(identifier: identifier) != nil
+      else {
+        return fallback.identifier
+      }
+      return identifier
+    }
+
     public func summaries(matching query: WorkoutQuery) async throws -> [WorkoutSummary] {
+      let plan = HealthKitQueryPlan(query: query)
+      if plan.limit == 0 { return [] }
       let descriptor = HKSampleQueryDescriptor<HKWorkout>(
-        predicates: [.workout()],
-        sortDescriptors: [SortDescriptor(\HKWorkout.startDate, order: .reverse)]
+        predicates: [.workout(plan.predicate)],
+        sortDescriptors: plan.sortDescriptors,
+        limit: plan.limit
       )
       let workouts = try await descriptor.result(for: healthStore)
-      var summaries: [WorkoutSummary] = []
-      for workout in workouts {
-        try Task.checkCancellation()
-        guard let activity = workout.workoutActivityType.fixtureActivity,
-          query.activities.isEmpty || query.activities.contains(activity),
-          query.startDate.map({ $0 <= workout.endDate }) ?? true,
-          query.endDate.map({ $0 >= workout.startDate }) ?? true
-        else { continue }
-        summaries.append(try await makeSummary(workout, activity: activity))
+      // The plan already filters by activity in HealthKit; drop only workouts
+      // whose HKWorkoutActivityType has no fixture mapping.
+      let matches = workouts.compactMap { workout in
+        workout.workoutActivityType.fixtureActivity.map { (workout: workout, activity: $0) }
       }
-      summaries.sort {
-        query.sort == .startDateAscending
-          ? $0.startDate < $1.startDate
-          : $0.startDate > $1.startDate
+      try Task.checkCancellation()
+      return try await withThrowingTaskGroup(of: (Int, WorkoutSummary).self) { group in
+        for (index, match) in matches.enumerated() {
+          group.addTask {
+            try Task.checkCancellation()
+            return (index, try await makeSummary(match.workout, activity: match.activity))
+          }
+        }
+        var summaries = [WorkoutSummary?](repeating: nil, count: matches.count)
+        for try await (index, summary) in group {
+          summaries[index] = summary
+        }
+        return summaries.compactMap { $0 }
       }
-      return query.limit.map { Array(summaries.prefix(max(0, $0))) } ?? summaries
     }
 
     public func fixture(for id: WorkoutID) async throws -> WorkoutFixture {
@@ -66,7 +128,10 @@
           location: workout.fixtureLocation,
           startDate: workout.startDate,
           endDate: workout.endDate,
-          timeZoneIdentifier: timeZone.identifier
+          timeZoneIdentifier: Self.resolvedTimeZoneIdentifier(
+            metadata: workout.metadata,
+            fallback: timeZone
+          )
         ),
         series: series,
         events: workout.workoutEvents?.compactMap(WorkoutEvent.init(healthKitEvent:)) ?? [],
