@@ -1,7 +1,11 @@
 import Foundation
 
+/// How serious a validation finding is; only errors fail
+/// ``WorkoutValidator/requireValid(_:)``.
 public enum ValidationSeverity: String, Codable, Comparable, Sendable {
+  /// Suspicious but usable data (empty series, unusual heart rate, large gaps).
   case warning
+  /// A violation of the fixture schema's semantic rules; the fixture should be rejected.
   case error
 
   public static func < (lhs: Self, rhs: Self) -> Bool {
@@ -9,10 +13,15 @@ public enum ValidationSeverity: String, Codable, Comparable, Sendable {
   }
 }
 
+/// A single validation finding at a specific location in a fixture.
 public struct ValidationIssue: Codable, Equatable, Sendable {
   public let severity: ValidationSeverity
+  /// A stable, machine-readable identifier such as `"sample.outOfBounds"`; suitable for
+  /// filtering or suppressing specific findings.
   public let code: String
+  /// A JSON-path-like location of the offending data, e.g. `"series[0].samples[2].value"`.
   public let path: String
+  /// A human-readable explanation of the finding.
   public let message: String
 
   public init(severity: ValidationSeverity, code: String, path: String, message: String) {
@@ -23,7 +32,9 @@ public struct ValidationIssue: Codable, Equatable, Sendable {
   }
 }
 
+/// Thrown by ``WorkoutValidator/requireValid(_:)`` when a fixture has error-severity issues.
 public struct FixtureValidationError: Error, Equatable, Sendable, LocalizedError {
+  /// Every issue found, warnings included, so callers can report the full picture.
   public let issues: [ValidationIssue]
 
   public init(issues: [ValidationIssue]) {
@@ -35,9 +46,16 @@ public struct FixtureValidationError: Error, Equatable, Sendable, LocalizedError
   }
 }
 
+/// Checks fixtures against the semantic rules the type system cannot enforce.
+///
+/// Errors cover schema version, empty IDs, reversed or out-of-bounds dates, invalid time
+/// zones, duplicate metrics, wrong units, unordered or non-finite samples, unbalanced
+/// pause/resume events, and invalid route coordinates. Warnings flag suspicious but usable
+/// data such as empty series, unusual heart rates, and long sample gaps.
 public struct WorkoutValidator: Sendable {
   public init() {}
 
+  /// Returns every issue found in `fixture`; an empty array means fully valid.
   public func validate(_ fixture: WorkoutFixture) -> [ValidationIssue] {
     var issues: [ValidationIssue] = []
     // A reversed workout is reported via workout.invalidBounds below; forming the
@@ -207,6 +225,9 @@ public struct WorkoutValidator: Sendable {
     return issues
   }
 
+  /// Validates `fixture` and throws when any error-severity issue is found; warnings alone
+  /// pass.
+  /// - Throws: ``FixtureValidationError`` carrying all issues, warnings included.
   public func requireValid(_ fixture: WorkoutFixture) throws {
     let issues = validate(fixture)
     guard !issues.contains(where: { $0.severity == .error }) else {

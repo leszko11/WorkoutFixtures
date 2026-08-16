@@ -7,21 +7,29 @@ public func assertSendable<T: Sendable>(_: T.Type) {}
 /// A sink that records every store and delete so tests can assert what an
 /// app would have written. Errors can be injected to exercise failure paths.
 public actor RecordingWorkoutSink: WorkoutFixtureSink, WorkoutFixtureDeleting {
+  /// Every fixture passed to `store(_:)`, in call order.
   public private(set) var storedFixtures: [WorkoutFixture] = []
+  /// Every identifier passed to `delete(externalID:)`, in call order.
   public private(set) var deletedExternalIDs: [String] = []
 
   private let externalID: @Sendable (WorkoutFixture) -> String?
   private var storeError: (any Error)?
   private var deleteError: (any Error)?
 
+  /// Creates a sink.
+  /// - Parameter externalID: Derives each receipt's external ID; return `nil` to simulate a
+  ///   store that saved but could not hand the workout back (`.savedUnavailable`).
   public init(externalID: @escaping @Sendable (WorkoutFixture) -> String? = { $0.id.rawValue }) {
     self.externalID = externalID
   }
 
+  /// Makes subsequent `store(_:)` calls throw `error`; pass `nil` to restore success.
   public func setStoreError(_ error: (any Error)?) {
     storeError = error
   }
 
+  /// Makes subsequent `delete(externalID:)` calls throw `error`; pass `nil` to restore
+  /// success.
   public func setDeleteError(_ error: (any Error)?) {
     deleteError = error
   }
@@ -48,6 +56,7 @@ public actor RecordingWorkoutSink: WorkoutFixtureSink, WorkoutFixtureDeleting {
 public struct FailingWorkoutSource: WorkoutFixtureSource {
   private let error: any Error
 
+  /// Creates a source whose every call throws `error`.
   public init(error: any Error = WorkoutFixtureSourceError.notFound("failing")) {
     self.error = error
   }
@@ -69,6 +78,7 @@ public actor InMemoryWorkoutStore: WorkoutFixtureSource, WorkoutFixtureSink,
 {
   private var fixturesByID: [WorkoutID: WorkoutFixture]
 
+  /// Creates a store seeded with `fixtures`; when IDs collide, the last fixture wins.
   public init(fixtures: [WorkoutFixture] = []) {
     fixturesByID = Dictionary(
       fixtures.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })

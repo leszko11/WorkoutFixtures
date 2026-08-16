@@ -1,9 +1,16 @@
 import Foundation
 
+/// Selects which privacy transformations ``WorkoutRedactor`` applies.
 public struct RedactionPolicy: Codable, Equatable, Sendable {
+  /// Replace the fixture ID with an opaque token that cannot be traced back to the original ID
+  /// (a one-way mix of the redaction seed and the original ID).
   public let regenerateID: Bool
+  /// Drop the GPS route entirely; location traces are the most identifying data a workout has.
   public let removeRoute: Bool
+  /// Drop the recording app/device metadata from provenance.
   public let removeSourceMetadata: Bool
+  /// Shift every date by a seed-derived whole number of calendar days (30–365, in either
+  /// direction) so the workout no longer reveals when it really happened.
   public let shiftDates: Bool
 
   public init(
@@ -18,6 +25,8 @@ public struct RedactionPolicy: Codable, Equatable, Sendable {
     self.shiftDates = shiftDates
   }
 
+  /// The policy for fixtures leaving the device they were captured on: regenerates the ID,
+  /// removes the route and source metadata, and shifts all dates.
   public static let sharing = Self(
     regenerateID: true,
     removeRoute: true,
@@ -26,9 +35,24 @@ public struct RedactionPolicy: Codable, Equatable, Sendable {
   )
 }
 
+/// Produces privacy-safe copies of captured fixtures for sharing.
+///
+/// Redaction is deterministic — the same seed and fixture always produce the same output — and
+/// one-way: the output never contains the seed, its provenance is reset to
+/// ``ProvenanceKind/redacted`` with no source fixture reference, and the regenerated ID cannot
+/// be reversed into the original ID or the seed.
 public struct WorkoutRedactor: Sendable {
   public init() {}
 
+  /// Returns a redacted copy of `fixture` according to `policy`.
+  ///
+  /// With the default ``RedactionPolicy/sharing`` policy the result has a regenerated ID, no
+  /// route, no source metadata, and every date shifted by a seed-derived number of calendar
+  /// days (computed in the workout's own time zone, so the local time of day is preserved).
+  /// The provenance `createdAt` is set to the shifted workout start so the real capture time
+  /// does not leak.
+  /// - Throws: ``GenerationError/dateCalculationFailed`` when the fixture's time zone
+  ///   identifier is invalid or the calendar shift cannot be computed.
   public func redact(
     _ fixture: WorkoutFixture,
     using policy: RedactionPolicy = .sharing,

@@ -1,6 +1,8 @@
 import Foundation
 
+/// The version of the fixture JSON schema; codecs reject anything other than ``current``.
 public struct SchemaVersion: RawRepresentable, Codable, Hashable, Sendable, Comparable {
+  /// The schema version this library reads and writes.
   public static let current = SchemaVersion(rawValue: 1)
 
   public let rawValue: Int
@@ -14,6 +16,7 @@ public struct SchemaVersion: RawRepresentable, Codable, Hashable, Sendable, Comp
   }
 }
 
+/// The stable identifier of a workout fixture; any non-empty string is valid.
 public struct WorkoutID: RawRepresentable, Codable, Hashable, Sendable, ExpressibleByStringLiteral,
   CustomStringConvertible
 {
@@ -30,23 +33,30 @@ public struct WorkoutID: RawRepresentable, Codable, Hashable, Sendable, Expressi
   public var description: String { rawValue }
 }
 
+/// The workout activity types the fixture schema supports.
 public enum WorkoutActivity: String, Codable, CaseIterable, Sendable {
   case running
   case walking
   case cycling
 }
 
+/// Where the workout took place, when known.
 public enum WorkoutLocation: String, Codable, CaseIterable, Sendable {
   case indoor
   case outdoor
   case unknown
 }
 
+/// The core facts of a workout: what, where, and when.
 public struct WorkoutDescriptor: Codable, Equatable, Sendable {
   public let activity: WorkoutActivity
   public let location: WorkoutLocation
+  /// Wall-clock start; every sample, event, and route point must fall inside
+  /// `startDate...endDate`.
   public let startDate: Date
   public let endDate: Date
+  /// The IANA identifier of the zone the workout was recorded in; used for calendar-day date
+  /// shifts. Validation rejects identifiers `TimeZone` does not recognize.
   public let timeZoneIdentifier: String
 
   public init(
@@ -64,11 +74,16 @@ public struct WorkoutDescriptor: Codable, Equatable, Sendable {
   }
 }
 
+/// The metric kinds a fixture can carry as time series.
+///
+/// `heartRate` samples are instantaneous rates; `distance` and `activeEnergy` samples are the
+/// amounts accrued during each sample's interval, so summing them yields the workout total.
 public enum MetricIdentifier: String, Codable, CaseIterable, Sendable {
   case heartRate
   case distance
   case activeEnergy
 
+  /// The only unit the schema accepts for this metric.
   public var canonicalUnit: UnitIdentifier {
     switch self {
     case .heartRate: .countPerMinute
@@ -78,12 +93,14 @@ public enum MetricIdentifier: String, Codable, CaseIterable, Sendable {
   }
 }
 
+/// Measurement units, spelled as HealthKit-compatible unit strings.
 public enum UnitIdentifier: String, Codable, CaseIterable, Sendable {
   case countPerMinute = "count/min"
   case meter = "m"
   case kilocalorie = "kcal"
 }
 
+/// One measured value over a time interval; instantaneous readings use equal start and end.
 public struct MetricSample: Codable, Equatable, Sendable {
   public let startDate: Date
   public let endDate: Date
@@ -96,6 +113,7 @@ public struct MetricSample: Codable, Equatable, Sendable {
   }
 }
 
+/// All samples of one metric, in chronological, non-overlapping order.
 public struct MetricSeries: Codable, Equatable, Sendable, Identifiable {
   public var id: MetricIdentifier { metric }
 
@@ -103,6 +121,9 @@ public struct MetricSeries: Codable, Equatable, Sendable, Identifiable {
   public let unit: UnitIdentifier
   public let samples: [MetricSample]
 
+  /// Creates a series.
+  /// - Parameter unit: Pass `nil` to use the metric's canonical unit; validation rejects any
+  ///   other unit, so the parameter mainly serves round-tripping decoded data.
   public init(metric: MetricIdentifier, unit: UnitIdentifier? = nil, samples: [MetricSample]) {
     self.metric = metric
     self.unit = unit ?? metric.canonicalUnit
@@ -110,6 +131,10 @@ public struct MetricSeries: Codable, Equatable, Sendable, Identifiable {
   }
 }
 
+/// Timeline events a workout can contain.
+///
+/// `pause` and `resume` must alternate, starting with a pause; the time between them counts
+/// as paused and is excluded from ``WorkoutSummary/activeDuration``.
 public enum WorkoutEventKind: String, Codable, CaseIterable, Sendable {
   case pause
   case resume
@@ -118,11 +143,13 @@ public enum WorkoutEventKind: String, Codable, CaseIterable, Sendable {
   case marker
 }
 
+/// An event on the workout timeline; instantaneous events have equal start and end dates.
 public struct WorkoutEvent: Codable, Equatable, Sendable {
   public let kind: WorkoutEventKind
   public let startDate: Date
   public let endDate: Date
 
+  /// Creates an event; omitting `endDate` makes it instantaneous (`endDate == startDate`).
   public init(kind: WorkoutEventKind, startDate: Date, endDate: Date? = nil) {
     self.kind = kind
     self.startDate = startDate
@@ -130,6 +157,10 @@ public struct WorkoutEvent: Codable, Equatable, Sendable {
   }
 }
 
+/// A single GPS fix on the workout route.
+///
+/// The optional fields mirror `CLLocation` and use its conventions: accuracies and altitude in
+/// meters, speed in meters per second, course in degrees clockwise from true north.
 public struct RoutePoint: Codable, Equatable, Sendable {
   public let date: Date
   public let latitude: Double
@@ -161,6 +192,7 @@ public struct RoutePoint: Codable, Equatable, Sendable {
   }
 }
 
+/// The GPS trace of a workout, as points ordered by date.
 public struct WorkoutRoute: Codable, Equatable, Sendable {
   public let points: [RoutePoint]
 
@@ -169,6 +201,10 @@ public struct WorkoutRoute: Codable, Equatable, Sendable {
   }
 }
 
+/// Identifies the app and device that originally recorded a captured workout.
+///
+/// This is user-identifying metadata; ``RedactionPolicy/sharing`` strips it before a fixture
+/// leaves the device it was captured on.
 public struct SourceProvenance: Codable, Equatable, Sendable {
   public let name: String?
   public let bundleIdentifier: String?
@@ -188,19 +224,30 @@ public struct SourceProvenance: Codable, Equatable, Sendable {
   }
 }
 
+/// How a fixture came to exist.
 public enum ProvenanceKind: String, Codable, Sendable {
+  /// Read from a real store such as HealthKit.
   case captured
+  /// Derived from a template by a ``WorkoutGenerating`` implementation.
   case generated
+  /// Written by hand (or by tooling other than capture, generation, or redaction).
   case authored
+  /// Produced by ``WorkoutRedactor``; identifying details have been removed.
   case redacted
 }
 
+/// The origin story of a fixture: how, when, and from what it was created.
 public struct FixtureProvenance: Codable, Equatable, Sendable {
   public let kind: ProvenanceKind
   public let createdAt: Date
+  /// The template this fixture was generated from; set only for ``ProvenanceKind/generated``.
   public let sourceFixtureID: WorkoutID?
+  /// The ``TemplateWorkoutGenerator/generatorVersion`` that produced this fixture, so outputs
+  /// can be regenerated when the generator's behavior changes.
   public let generatorVersion: String?
+  /// The root seed used for generation; redacted fixtures never carry a seed.
   public let seed: UInt64?
+  /// Recording app/device metadata; present only on captured fixtures that keep it.
   public let source: SourceProvenance?
 
   public init(
@@ -220,10 +267,17 @@ public struct FixtureProvenance: Codable, Equatable, Sendable {
   }
 }
 
+/// A complete, self-contained workout recording.
+///
+/// A fixture bundles the descriptor, metric series, timeline events, optional GPS route, and
+/// provenance into one value that round-trips through the canonical JSON codecs. Use
+/// ``WorkoutValidator`` to check the semantic rules (bounds, ordering, units) the type itself
+/// does not enforce.
 public struct WorkoutFixture: Codable, Equatable, Sendable, Identifiable {
   public let schemaVersion: SchemaVersion
   public let id: WorkoutID
   public let workout: WorkoutDescriptor
+  /// At most one series per metric; validation reports duplicates as errors.
   public let series: [MetricSeries]
   public let events: [WorkoutEvent]
   public let route: WorkoutRoute?
@@ -248,16 +302,20 @@ public struct WorkoutFixture: Codable, Equatable, Sendable, Identifiable {
   }
 }
 
+/// A lightweight listing row for a workout, cheap enough to build for query results.
 public struct WorkoutSummary: Codable, Equatable, Sendable, Identifiable {
   public let id: WorkoutID
   public let activity: WorkoutActivity
   public let location: WorkoutLocation
   public let startDate: Date
   public let endDate: Date
+  /// Wall-clock time from start to end, including pauses.
   public let elapsedDuration: TimeInterval
+  /// Elapsed time minus the paused time between pause/resume events.
   public let activeDuration: TimeInterval
   public let distanceMeters: Double?
   public let activeEnergyKilocalories: Double?
+  /// Duration-weighted mean heart rate in count/min, or `nil` when no samples exist.
   public let averageHeartRate: Double?
   public let hasRoute: Bool
 
@@ -287,6 +345,8 @@ public struct WorkoutSummary: Codable, Equatable, Sendable, Identifiable {
     self.hasRoute = hasRoute
   }
 
+  /// Derives the summary from a fixture: totals for distance and energy, the duration-weighted
+  /// heart-rate average, and an active duration that excludes paused time.
   public init(fixture: WorkoutFixture) {
     id = fixture.id
     activity = fixture.workout.activity
@@ -303,17 +363,24 @@ public struct WorkoutSummary: Codable, Equatable, Sendable, Identifiable {
 }
 
 extension WorkoutFixture {
+  /// A listing summary derived from this fixture; computed on each access.
   public var summary: WorkoutSummary { WorkoutSummary(fixture: self) }
 
+  /// The series carrying `metric`, or `nil` when the fixture has none.
   public func series(for metric: MetricIdentifier) -> MetricSeries? {
     series.first { $0.metric == metric }
   }
 
+  /// The sum of the metric's sample values (meaningful for cumulative metrics such as distance
+  /// and energy), or `nil` when the series is missing or empty.
   public func total(for metric: MetricIdentifier) -> Double? {
     guard let metricSeries = series(for: metric), !metricSeries.samples.isEmpty else { return nil }
     return metricSeries.samples.reduce(0) { $0 + $1.value }
   }
 
+  /// The duration-weighted mean of the metric's samples — each sample weighted by its interval
+  /// length, with a one-second floor so instantaneous samples still count — or `nil` when the
+  /// series is missing or empty.
   public func average(for metric: MetricIdentifier) -> Double? {
     guard let samples = series(for: metric)?.samples, !samples.isEmpty else { return nil }
     let weighted = samples.reduce(into: (value: 0.0, duration: 0.0)) { partial, sample in
@@ -324,6 +391,10 @@ extension WorkoutFixture {
     return weighted.value / weighted.duration
   }
 
+  /// Total time spent paused, from matched pause/resume event pairs.
+  ///
+  /// A pause with no matching resume runs until the workout's end date; the result is clamped
+  /// to the elapsed duration.
   public var pausedDuration: TimeInterval {
     var pauseStart: Date?
     var total: TimeInterval = 0

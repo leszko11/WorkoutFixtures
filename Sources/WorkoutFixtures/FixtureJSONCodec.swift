@@ -1,10 +1,14 @@
 import Foundation
 
+/// How decoding treats JSON fields the fixture schema does not define.
 public enum UnknownFieldPolicy: String, Codable, Sendable {
+  /// Fail decoding, naming the first unknown field; the default, so typos surface immediately.
   case reject
+  /// Silently skip unknown fields; use for reading data from newer producers.
   case ignore
 }
 
+/// Failures raised while decoding or encoding a single fixture document.
 public enum FixtureCodingError: Error, Equatable, Sendable, LocalizedError {
   case invalidTopLevel
   case unknownField(path: String)
@@ -25,9 +29,21 @@ public enum FixtureCodingError: Error, Equatable, Sendable, LocalizedError {
   }
 }
 
+/// Decodes and encodes single ``WorkoutFixture`` documents as strict, canonical JSON.
+///
+/// Decoding requires a top-level JSON object that declares the current `schemaVersion`, and
+/// with the default ``UnknownFieldPolicy/reject`` policy fails on any field the schema does
+/// not define. Encoding is canonical — pretty-printed with sorted keys, a trailing newline,
+/// and ISO-8601 UTC timestamps with fractional seconds — so equal fixtures always encode to
+/// byte-identical output, which keeps fixtures diffable in version control.
 public struct FixtureJSONCodec: Sendable {
   public init() {}
 
+  /// Decodes one fixture from `data`.
+  /// - Throws: ``FixtureCodingError`` when the top level is not an object, `schemaVersion` is
+  ///   missing or unsupported, or (under ``UnknownFieldPolicy/reject``) an unknown field is
+  ///   present; `DecodingError` for malformed values, including timestamps that are not
+  ///   ISO-8601 with fractional seconds.
   public func decode(
     _ data: Data,
     unknownFields: UnknownFieldPolicy = .reject
@@ -58,6 +74,10 @@ public struct FixtureJSONCodec: Sendable {
     return try CanonicalFixtureJSON.makeDecoder().decode(WorkoutFixture.self, from: data)
   }
 
+  /// Encodes `fixture` to canonical JSON (pretty, sorted keys, trailing newline, ISO-8601 UTC
+  /// dates with fractional seconds).
+  /// - Throws: ``FixtureCodingError/unsupportedSchemaVersion(_:)`` when the fixture's schema
+  ///   version is not ``SchemaVersion/current``.
   public func encode(_ fixture: WorkoutFixture) throws -> Data {
     guard fixture.schemaVersion == .current else {
       throw FixtureCodingError.unsupportedSchemaVersion(fixture.schemaVersion)
@@ -65,10 +85,14 @@ public struct FixtureJSONCodec: Sendable {
     return try CanonicalFixtureJSON.encode(fixture)
   }
 
+  /// Rewrites fixture JSON into canonical form: a strict decode followed by a canonical
+  /// encode, so the result is byte-stable regardless of the input's formatting.
   public func migrate(_ data: Data) throws -> Data {
     try encode(decode(data, unknownFields: .reject))
   }
 
+  /// The bundled JSON Schema describing the single-fixture document format, for external
+  /// validation tooling.
   public static var schemaData: Data {
     get throws {
       guard

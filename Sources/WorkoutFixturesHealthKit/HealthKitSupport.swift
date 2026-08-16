@@ -3,6 +3,8 @@
   import HealthKit
   import WorkoutFixtures
 
+  /// Which HealthKit permissions to request for the workout types the adapters use
+  /// (workouts, routes, heart rate, distance, active energy).
   public enum HealthKitWorkoutAccess: Sendable {
     case read
     case write
@@ -12,9 +14,12 @@
   /// Explicit authorization boundary, injectable so app code that requests
   /// authorization stays testable without a real `HKHealthStore`.
   public protocol HealthAuthorizing: Sendable {
+    /// Requests the HealthKit permissions the adapters need for `access`.
     func requestAuthorization(for access: HealthKitWorkoutAccess) async throws
   }
 
+  /// The production ``HealthAuthorizing``: asks a real `HKHealthStore` for access to every
+  /// workout-related type the adapters read or write.
   public struct HealthKitAuthorizationController: HealthAuthorizing, Sendable {
     private let healthStore: HKHealthStore
 
@@ -22,6 +27,8 @@
       self.healthStore = healthStore
     }
 
+    /// Presents the system authorization sheet when any requested type is undetermined.
+    /// - Throws: HealthKit errors, for example when Health data is unavailable on the device.
     public func requestAuthorization(for access: HealthKitWorkoutAccess) async throws {
       let shareTypes: Set<HKSampleType>
       let readTypes: Set<HKObjectType>

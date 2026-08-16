@@ -1,5 +1,6 @@
 import Foundation
 
+/// Failures raised while decoding generation recipes.
 public enum GenerationRecipeCodingError: Error, Equatable, Sendable, LocalizedError {
   case invalidTopLevel
   case unknownField(path: String)
@@ -14,9 +15,18 @@ public enum GenerationRecipeCodingError: Error, Equatable, Sendable, LocalizedEr
   }
 }
 
+/// Decodes and encodes ``GenerationRecipe`` documents as strict, canonical JSON.
+///
+/// Decoding always rejects unknown fields — there is no ignore option, because a mistyped
+/// transform parameter would otherwise silently change the generated output. Encoding uses the
+/// same canonical style as fixtures: pretty-printed, sorted keys, trailing newline.
 public struct GenerationRecipeCodec: Sendable {
   public init() {}
 
+  /// Decodes a recipe from `data`.
+  /// - Throws: ``GenerationRecipeCodingError`` when the top level is not an object or any
+  ///   unknown field appears (including inside transforms and their nested ranges);
+  ///   `DecodingError` for malformed values or transform parameters.
   public func decode(_ data: Data) throws -> GenerationRecipe {
     let raw = try JSONSerialization.jsonObject(with: data)
     guard let object = raw as? [String: Any] else {
@@ -28,10 +38,13 @@ public struct GenerationRecipeCodec: Sendable {
     return try JSONDecoder().decode(GenerationRecipe.self, from: data)
   }
 
+  /// Encodes `recipe` to canonical JSON (pretty, sorted keys, trailing newline).
   public func encode(_ recipe: GenerationRecipe) throws -> Data {
     try CanonicalFixtureJSON.encode(recipe)
   }
 
+  /// The bundled JSON Schema describing the recipe document format, for external validation
+  /// tooling.
   public static var schemaData: Data {
     get throws {
       guard

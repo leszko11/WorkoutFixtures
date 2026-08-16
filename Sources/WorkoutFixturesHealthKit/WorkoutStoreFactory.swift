@@ -3,7 +3,10 @@
   import HealthKit
   import WorkoutFixtures
 
+  /// Failures raised by ``WorkoutStoreFactory/make(healthStore:configuration:presetFixtures:)``.
   public enum WorkoutStoreFactoryError: Error, Equatable, Sendable, LocalizedError {
+    /// The launch environment selected preset fixtures but no `presetFixtures` provider was
+    /// passed to the factory.
     case presetFixturesUnavailable
 
     public var errorDescription: String? {
@@ -30,11 +33,20 @@
   /// )
   /// ```
   public enum WorkoutStoreFactory {
+    /// The source/sink pair the factory returns; in fixture modes both are the same in-memory
+    /// store, so writes are visible to subsequent reads.
     public typealias Stores = (
       source: any WorkoutFixtureSource,
       sink: any WorkoutFixtureSink & WorkoutFixtureDeleting
     )
 
+    /// Returns the stores selected by the launch configuration.
+    ///
+    /// `healthStore` is evaluated only in live mode, so fixture-backed runs never touch
+    /// HealthKit; `presetFixtures` is invoked only in `.presets` mode.
+    /// - Throws: ``WorkoutStoreFactoryError/presetFixturesUnavailable`` when `.presets` is
+    ///   selected without a provider, or any error from loading and decoding the selected
+    ///   fixture JSON.
     public static func make(
       healthStore: @autoclosure () -> HKHealthStore = HKHealthStore(),
       configuration: FixtureLaunchConfiguration? = FixtureLaunchConfiguration(),

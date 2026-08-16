@@ -1,5 +1,7 @@
 import Foundation
 
+/// An inclusive floating-point range a transform draws a value from; construct it from a
+/// single value to fix the value instead of randomizing it.
 public struct DoubleRange: Codable, Equatable, Sendable {
   public let lowerBound: Double
   public let upperBound: Double
@@ -15,6 +17,8 @@ public struct DoubleRange: Codable, Equatable, Sendable {
   }
 }
 
+/// An inclusive integer range a transform draws a value from; construct it from a single value
+/// to fix the value instead of randomizing it.
 public struct IntegerRange: Codable, Equatable, Sendable {
   public let lowerBound: Int
   public let upperBound: Int
@@ -30,6 +34,7 @@ public struct IntegerRange: Codable, Equatable, Sendable {
   }
 }
 
+/// A latitude/longitude pair in degrees.
 public struct Coordinate: Codable, Equatable, Sendable {
   public let latitude: Double
   public let longitude: Double
@@ -52,15 +57,35 @@ enum GenerationTransformKind: String, Codable, Sendable {
   case removeRoute
 }
 
+/// One deterministic mutation applied to a template fixture during generation.
+///
+/// Transforms that take a range draw their concrete value from the transform's own seeded
+/// random stream, so a given template, recipe, and seed always produce the same result.
 public enum GenerationTransform: Codable, Equatable, Sendable {
+  /// Shifts every date by a whole number of calendar days drawn from `days`, computed in the
+  /// workout's own time zone so the local time of day survives DST boundaries.
   case shiftDate(days: IntegerRange)
+  /// Rescales the whole timeline around the workout's start date by a factor drawn from the
+  /// range (bounds must be positive). Sample values are untouched, but route point speeds are
+  /// divided by the factor so pace stays consistent with the stretched timeline.
   case scaleDuration(DoubleRange)
+  /// Multiplies every sample of the metric by a factor drawn from the range (bounds must be
+  /// nonnegative); other series are untouched.
   case scaleMetric(MetricIdentifier, factor: DoubleRange)
+  /// Adds Gaussian noise with the given standard deviation to each sample of the metric,
+  /// clamping every result into `bounds` when bounds are provided.
   case addNoise(to: MetricIdentifier, standardDeviation: Double, bounds: ClosedRange<Double>?)
+  /// Rebuckets the metric into fixed-width intervals spanning the workout. Cumulative metrics
+  /// (distance, energy) are overlap-weighted so the series total is preserved; heart rate is
+  /// averaged per bucket. Buckets no original sample overlaps are dropped.
   case resample(MetricIdentifier, every: TimeInterval)
+  /// Moves the route so its centroid lands on the target coordinate, preserving its shape.
   case translateRoute(to: Coordinate)
+  /// Rotates the route around its centroid by the given number of degrees.
   case rotateRoute(degrees: Double)
+  /// Displaces each route point independently by up to `maxMeters` in a random direction.
   case jitterRoute(maxMeters: Double)
+  /// Drops the route entirely.
   case removeRoute
 
   private enum CodingKeys: String, CodingKey {
@@ -77,6 +102,8 @@ public enum GenerationTransform: Codable, Equatable, Sendable {
     case maxMeters
   }
 
+  /// Decodes from the recipe JSON shape: a flat object discriminated by its `kind` field, with
+  /// only the parameters that kind requires.
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     switch try container.decode(GenerationTransformKind.self, forKey: .kind) {
@@ -111,6 +138,7 @@ public enum GenerationTransform: Codable, Equatable, Sendable {
     }
   }
 
+  /// Encodes to the same `kind`-discriminated flat object that ``init(from:)`` decodes.
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     switch self {
@@ -169,6 +197,7 @@ public enum GenerationTransform: Codable, Equatable, Sendable {
   }
 }
 
+/// An ordered list of transforms applied in sequence to a template fixture.
 public struct GenerationRecipe: Codable, Equatable, Sendable {
   public let transforms: [GenerationTransform]
 
@@ -177,8 +206,12 @@ public struct GenerationRecipe: Codable, Equatable, Sendable {
   }
 }
 
+/// Failures raised while generating fixtures.
 public enum GenerationError: Error, Equatable, Sendable, LocalizedError {
+  /// A transform's parameters are out of range; `index` is its position in the recipe.
   case invalidTransform(index: Int, message: String)
+  /// A calendar-day date shift could not be computed (for example, the fixture's time-zone
+  /// identifier is invalid).
   case dateCalculationFailed
 
   public var errorDescription: String? {
@@ -191,15 +224,31 @@ public enum GenerationError: Error, Equatable, Sendable, LocalizedError {
   }
 }
 
+/// The default ``WorkoutGenerating`` implementation: applies recipe transforms to a template.
+///
+/// Every randomized decision draws from a seed derived from the root seed — each output of a
+/// batch gets its own seed, and each transform within an output gets its own stream — so
+/// results depend only on the template, recipe, and seed, never on task scheduling.
 public struct TemplateWorkoutGenerator: WorkoutGenerating, Sendable {
+  /// Recorded into generated fixtures' provenance; bumped whenever the output for a given
+  /// template, recipe, and seed changes.
   public static let generatorVersion = "1"
 
   private let validator: WorkoutValidator
 
+  /// Creates a generator that validates the template before, and the result after, generation.
   public init(validator: WorkoutValidator = WorkoutValidator()) {
     self.validator = validator
   }
 
+  /// Applies each transform in recipe order, seeding transform `i` with a value derived from
+  /// `seed` and `i`.
+  ///
+  /// The output's ID is `"<templateID>-<seed in hex>"` and its provenance records the template
+  /// ID, generator version, and seed.
+  /// - Throws: ``FixtureValidationError`` when the template or the result is invalid,
+  ///   ``GenerationError`` for invalid transform parameters or failed date math, and
+  ///   `CancellationError` when the surrounding task is cancelled.
   @concurrent
   public func generate(
     from template: WorkoutFixture,
@@ -233,6 +282,13 @@ public struct TemplateWorkoutGenerator: WorkoutGenerating, Sendable {
     return generated
   }
 
+  /// Generates `count` fixtures concurrently, in stable order.
+  ///
+  /// Output `n` uses a per-output seed derived from `seed` and `n`, so the batch is
+  /// byte-identical to generating each output serially — task scheduling never affects the
+  /// results.
+  /// - Throws: ``GenerationError/invalidTransform(index:message:)`` when `count` is negative
+  ///   (reported at index -1), plus anything the single-output overload throws.
   @concurrent
   public func generate(
     count: Int,

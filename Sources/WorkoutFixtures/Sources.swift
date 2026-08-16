@@ -27,9 +27,11 @@ extension WorkoutQuery {
   }
 }
 
+/// A read-only fixture source backed by fixtures held in memory.
 public struct InMemoryWorkoutSource: WorkoutFixtureSource, Sendable {
   private let fixturesByID: [WorkoutID: WorkoutFixture]
 
+  /// Creates a source over `fixtures`; when IDs collide, the last fixture wins.
   public init(fixtures: [WorkoutFixture]) {
     fixturesByID = Dictionary(
       fixtures.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
@@ -52,9 +54,18 @@ public struct InMemoryWorkoutSource: WorkoutFixtureSource, Sendable {
   }
 }
 
+/// A read-only fixture source that decodes JSON once at initialization and serves it from
+/// memory.
+///
+/// The input may be either a single fixture document or a fixture archive; the archive form is
+/// detected by the presence of a top-level `fixtures` key. Decoding is strict by default: any
+/// field the schema does not define fails initialization.
 public struct JSONWorkoutSource: WorkoutFixtureSource, Sendable {
   private let source: InMemoryWorkoutSource
 
+  /// Decodes fixtures from in-memory JSON.
+  /// - Throws: `FixtureCodingError` or `FixtureArchiveCodingError` for schema violations, and
+  ///   `DecodingError` for malformed values.
   public init(
     data: Data,
     fixtureCodec: FixtureJSONCodec = FixtureJSONCodec(),
@@ -72,6 +83,7 @@ public struct JSONWorkoutSource: WorkoutFixtureSource, Sendable {
     source = InMemoryWorkoutSource(fixtures: fixtures)
   }
 
+  /// Decodes fixtures from a JSON file on disk.
   public init(
     url: URL,
     fixtureCodec: FixtureJSONCodec = FixtureJSONCodec(),
@@ -86,6 +98,10 @@ public struct JSONWorkoutSource: WorkoutFixtureSource, Sendable {
     )
   }
 
+  /// Decodes fixtures from a bundled JSON resource, looking in `subdirectory` first and then
+  /// among the bundle's top-level resources (some build systems flatten resource folders).
+  /// - Throws: `CocoaError(.fileNoSuchFile)` when the resource is missing, plus the decoding
+  ///   errors of ``init(data:fixtureCodec:archiveCodec:unknownFields:)``.
   public init(
     bundle: Bundle,
     resource: String,

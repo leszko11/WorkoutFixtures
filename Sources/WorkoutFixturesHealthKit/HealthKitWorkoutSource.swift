@@ -46,10 +46,21 @@
     }
   }
 
+  /// Reads workouts out of HealthKit as fixtures.
+  ///
+  /// Query filters, sorting, and limits are pushed down into HealthKit predicates rather than
+  /// applied in memory, so only matching workouts are fetched. Only running, walking, and
+  /// cycling workouts are surfaced; other activity types are skipped. Loaded fixtures are
+  /// normalized — samples, events, and route points sorted and clamped into the workout's
+  /// bounds, unbalanced pause/resume events dropped — so they pass `WorkoutValidator` even
+  /// when HealthKit's raw data would not.
   public struct HealthKitWorkoutSource: WorkoutFixtureSource, Sendable {
     private let healthStore: HKHealthStore
     private let timeZone: TimeZone
 
+    /// Creates a source over `healthStore`.
+    /// - Parameter timeZone: Fallback used when a workout carries no (or an invalid)
+    ///   `HKMetadataKeyTimeZone`.
     public init(healthStore: HKHealthStore, timeZone: TimeZone = .current) {
       self.healthStore = healthStore
       self.timeZone = timeZone
@@ -69,6 +80,8 @@
       return identifier
     }
 
+    /// Fetches matching workouts with one HealthKit query, then builds their summaries
+    /// concurrently while preserving the query's sort order.
     public func summaries(matching query: WorkoutQuery) async throws -> [WorkoutSummary] {
       let plan = HealthKitQueryPlan(query: query)
       if plan.limit == 0 { return [] }
@@ -99,6 +112,11 @@
       }
     }
 
+    /// Loads the complete workout — metric series, events, and route fetched concurrently —
+    /// for the HealthKit workout whose UUID is `id`, normalized into a valid fixture with
+    /// `.captured` provenance.
+    /// - Throws: `WorkoutFixtureSourceError.notFound` when `id` is not a UUID, no workout
+    ///   matches, or the workout's activity type has no fixture mapping.
     public func fixture(for id: WorkoutID) async throws -> WorkoutFixture {
       guard let uuid = UUID(uuidString: id.rawValue) else {
         throw WorkoutFixtureSourceError.notFound(id)
