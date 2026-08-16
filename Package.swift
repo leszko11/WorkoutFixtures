@@ -18,6 +18,7 @@ let package = Package(
     .library(name: "WorkoutFixtures", targets: ["WorkoutFixtures"]),
     .library(name: "WorkoutFixturesHealthKit", targets: ["WorkoutFixturesHealthKit"]),
     .library(name: "WorkoutFixturesTestSupport", targets: ["WorkoutFixturesTestSupport"]),
+    .library(name: "WorkoutFixturesDebugUI", targets: ["WorkoutFixturesDebugUI"]),
     .executable(name: "workout-fixture", targets: ["WorkoutFixtureCLI"]),
   ],
   dependencies: [
@@ -41,6 +42,15 @@ let package = Package(
       name: "WorkoutFixturesTestSupport",
       dependencies: ["WorkoutFixtures"],
       resources: [.process("Resources")],
+      swiftSettings: concurrencySettings
+    ),
+    .target(
+      name: "WorkoutFixturesDebugUI",
+      dependencies: [
+        "WorkoutFixtures",
+        "WorkoutFixturesHealthKit",
+        "WorkoutFixturesTestSupport",
+      ],
       swiftSettings: concurrencySettings
     ),
     .executableTarget(

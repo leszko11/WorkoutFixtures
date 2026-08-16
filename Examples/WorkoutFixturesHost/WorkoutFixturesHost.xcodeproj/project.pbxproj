@@ -8,9 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		100000000000000000000001 /* WorkoutFixturesHostApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* WorkoutFixturesHostApp.swift */; };
-		100000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* ContentView.swift */; };
-		100000000000000000000003 /* HostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* HostViewModel.swift */; };
-		100000000000000000000004 /* FixtureDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* FixtureDocument.swift */; };
 		100000000000000000000005 /* HostViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* HostViewModelTests.swift */; };
 		100000000000000000000006 /* WorkoutFixturesHostUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* WorkoutFixturesHostUITests.swift */; };
 		100000000000000000000007 /* WorkoutFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000002 /* WorkoutFixtures */; };
@@ -19,6 +16,8 @@
 		10000000000000000000000A /* WorkoutFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000005 /* WorkoutFixtures */; };
 		10000000000000000000000B /* WorkoutFixturesHealthKit in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000006 /* WorkoutFixturesHealthKit */; };
 		10000000000000000000000C /* WorkoutFixturesTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000007 /* WorkoutFixturesTestSupport */; };
+		10000000000000000000000E /* WorkoutFixturesDebugUI in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000008 /* WorkoutFixturesDebugUI */; };
+		10000000000000000000000F /* WorkoutFixturesDebugUI in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000009 /* WorkoutFixturesDebugUI */; };
 		10000000000000000000000D /* HealthKitIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* HealthKitIntegrationTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -41,9 +40,6 @@
 
 /* Begin PBXFileReference section */
 		200000000000000000000001 /* WorkoutFixturesHostApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFixturesHostApp.swift; sourceTree = "<group>"; };
-		200000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		200000000000000000000003 /* HostViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostViewModel.swift; sourceTree = "<group>"; };
-		200000000000000000000004 /* FixtureDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureDocument.swift; sourceTree = "<group>"; };
 		200000000000000000000005 /* WorkoutFixturesHost.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WorkoutFixturesHost.entitlements; sourceTree = "<group>"; };
 		200000000000000000000006 /* HostViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostViewModelTests.swift; sourceTree = "<group>"; };
 		200000000000000000000007 /* WorkoutFixturesHostUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFixturesHostUITests.swift; sourceTree = "<group>"; };
@@ -62,6 +58,7 @@
 				100000000000000000000007 /* WorkoutFixtures in Frameworks */,
 				100000000000000000000008 /* WorkoutFixturesHealthKit in Frameworks */,
 				100000000000000000000009 /* WorkoutFixturesTestSupport in Frameworks */,
+				10000000000000000000000E /* WorkoutFixturesDebugUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,6 +69,7 @@
 				10000000000000000000000A /* WorkoutFixtures in Frameworks */,
 				10000000000000000000000B /* WorkoutFixturesHealthKit in Frameworks */,
 				10000000000000000000000C /* WorkoutFixturesTestSupport in Frameworks */,
+				10000000000000000000000F /* WorkoutFixturesDebugUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -99,9 +97,6 @@
 			isa = PBXGroup;
 			children = (
 				200000000000000000000001 /* WorkoutFixturesHostApp.swift */,
-				200000000000000000000002 /* ContentView.swift */,
-				200000000000000000000003 /* HostViewModel.swift */,
-				200000000000000000000004 /* FixtureDocument.swift */,
 				200000000000000000000005 /* WorkoutFixturesHost.entitlements */,
 				20000000000000000000000C /* Info.plist */,
 			);
@@ -155,6 +150,7 @@
 				E00000000000000000000002 /* WorkoutFixtures */,
 				E00000000000000000000003 /* WorkoutFixturesHealthKit */,
 				E00000000000000000000004 /* WorkoutFixturesTestSupport */,
+				E00000000000000000000008 /* WorkoutFixturesDebugUI */,
 			);
 			productName = WorkoutFixturesHost;
 			productReference = 200000000000000000000008 /* WorkoutFixturesHost.app */;
@@ -178,6 +174,7 @@
 				E00000000000000000000005 /* WorkoutFixtures */,
 				E00000000000000000000006 /* WorkoutFixturesHealthKit */,
 				E00000000000000000000007 /* WorkoutFixturesTestSupport */,
+				E00000000000000000000009 /* WorkoutFixturesDebugUI */,
 			);
 			productName = WorkoutFixturesHostTests;
 			productReference = 200000000000000000000009 /* WorkoutFixturesHostTests.xctest */;
@@ -278,9 +275,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				100000000000000000000001 /* WorkoutFixturesHostApp.swift in Sources */,
-				100000000000000000000002 /* ContentView.swift in Sources */,
-				100000000000000000000003 /* HostViewModel.swift in Sources */,
-				100000000000000000000004 /* FixtureDocument.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -583,6 +577,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */;
 			productName = WorkoutFixturesTestSupport;
+		};
+		E00000000000000000000008 /* WorkoutFixturesDebugUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */;
+			productName = WorkoutFixturesDebugUI;
+		};
+		E00000000000000000000009 /* WorkoutFixturesDebugUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */;
+			productName = WorkoutFixturesDebugUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
