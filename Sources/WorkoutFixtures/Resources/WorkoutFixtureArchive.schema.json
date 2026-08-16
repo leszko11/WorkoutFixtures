@@ -1,0 +1,28 @@
+{
+  "$id": "https://workoutfixtures.dev/schema/workout-fixture-archive-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "createdAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "fixtures": {
+      "items": {
+        "$ref": "https://workoutfixtures.dev/schema/workout-fixture-v1.json"
+      },
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "createdAt",
+    "fixtures"
+  ],
+  "title": "Workout Fixture Archive",
+  "type": "object"
+}

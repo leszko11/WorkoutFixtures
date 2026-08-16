@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workoutfixtures.dev/schema/workout-fixture-v1.json",
+  "title": "WorkoutFixtures workout fixture",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "workout", "series", "events", "provenance"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "workout": { "$ref": "#/$defs/workout" },
+    "series": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/metricSeries" }
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "route": {
+      "anyOf": [
+        { "$ref": "#/$defs/route" },
+        { "type": "null" }
+      ]
+    },
+    "provenance": { "$ref": "#/$defs/provenance" }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "workout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["activity", "location", "startDate", "endDate", "timeZoneIdentifier"],
+      "properties": {
+        "activity": { "enum": ["running", "walking", "cycling"] },
+        "location": { "enum": ["indoor", "outdoor", "unknown"] },
+        "startDate": { "$ref": "#/$defs/timestamp" },
+        "endDate": { "$ref": "#/$defs/timestamp" },
+        "timeZoneIdentifier": { "type": "string", "minLength": 1 }
+      }
+    },
+    "metricSeries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "unit", "samples"],
+      "properties": {
+        "metric": { "enum": ["heartRate", "distance", "activeEnergy"] },
+        "unit": { "enum": ["count/min", "m", "kcal"] },
+        "samples": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/metricSample" }
+        }
+      }
+    },
+    "metricSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startDate", "endDate", "value"],
+      "properties": {
+        "startDate": { "$ref": "#/$defs/timestamp" },
+        "endDate": { "$ref": "#/$defs/timestamp" },
+        "value": { "type": "number" }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "startDate", "endDate"],
+      "properties": {
+        "kind": { "enum": ["pause", "resume", "lap", "segment", "marker"] },
+        "startDate": { "$ref": "#/$defs/timestamp" },
+        "endDate": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["points"],
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/routePoint" }
+        }
+      }
+    },
+    "routePoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["date", "latitude", "longitude"],
+      "properties": {
+        "date": { "$ref": "#/$defs/timestamp" },
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+        "altitude": { "type": ["number", "null"] },
+        "horizontalAccuracy": { "type": ["number", "null"] },
+        "verticalAccuracy": { "type": ["number", "null"] },
+        "speed": { "type": ["number", "null"] },
+        "course": { "type": ["number", "null"] }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "bundleIdentifier": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] },
+        "deviceModel": { "type": ["string", "null"] }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "createdAt"],
+      "properties": {
+        "kind": { "enum": ["captured", "generated", "authored", "redacted"] },
+        "createdAt": { "$ref": "#/$defs/timestamp" },
+        "sourceFixtureID": { "type": ["string", "null"] },
+        "generatorVersion": { "type": ["string", "null"] },
+        "seed": { "type": ["integer", "null"], "minimum": 0 },
+        "source": {
+          "anyOf": [
+            { "$ref": "#/$defs/source" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}
