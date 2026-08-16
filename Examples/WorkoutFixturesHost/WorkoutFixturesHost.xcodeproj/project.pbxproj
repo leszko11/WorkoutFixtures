@@ -1,0 +1,592 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 71;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		100000000000000000000001 /* WorkoutFixturesHostApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* WorkoutFixturesHostApp.swift */; };
+		100000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* ContentView.swift */; };
+		100000000000000000000003 /* HostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* HostViewModel.swift */; };
+		100000000000000000000004 /* FixtureDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* FixtureDocument.swift */; };
+		100000000000000000000005 /* HostViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* HostViewModelTests.swift */; };
+		100000000000000000000006 /* WorkoutFixturesHostUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* WorkoutFixturesHostUITests.swift */; };
+		100000000000000000000007 /* WorkoutFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000002 /* WorkoutFixtures */; };
+		100000000000000000000008 /* WorkoutFixturesHealthKit in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000003 /* WorkoutFixturesHealthKit */; };
+		100000000000000000000009 /* WorkoutFixturesTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000004 /* WorkoutFixturesTestSupport */; };
+		10000000000000000000000A /* WorkoutFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000005 /* WorkoutFixtures */; };
+		10000000000000000000000B /* WorkoutFixturesHealthKit in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000006 /* WorkoutFixturesHealthKit */; };
+		10000000000000000000000C /* WorkoutFixturesTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000007 /* WorkoutFixturesTestSupport */; };
+		10000000000000000000000D /* HealthKitIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* HealthKitIntegrationTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		300000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A00000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B00000000000000000000001;
+			remoteInfo = WorkoutFixturesHost;
+		};
+		300000000000000000000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A00000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B00000000000000000000001;
+			remoteInfo = WorkoutFixturesHost;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		200000000000000000000001 /* WorkoutFixturesHostApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFixturesHostApp.swift; sourceTree = "<group>"; };
+		200000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		200000000000000000000003 /* HostViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostViewModel.swift; sourceTree = "<group>"; };
+		200000000000000000000004 /* FixtureDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureDocument.swift; sourceTree = "<group>"; };
+		200000000000000000000005 /* WorkoutFixturesHost.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WorkoutFixturesHost.entitlements; sourceTree = "<group>"; };
+		200000000000000000000006 /* HostViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostViewModelTests.swift; sourceTree = "<group>"; };
+		200000000000000000000007 /* WorkoutFixturesHostUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFixturesHostUITests.swift; sourceTree = "<group>"; };
+		200000000000000000000008 /* WorkoutFixturesHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkoutFixturesHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		200000000000000000000009 /* WorkoutFixturesHostTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkoutFixturesHostTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		20000000000000000000000A /* WorkoutFixturesHostUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkoutFixturesHostUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		20000000000000000000000B /* HealthKitIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitIntegrationTests.swift; sourceTree = "<group>"; };
+		20000000000000000000000C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		400000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000007 /* WorkoutFixtures in Frameworks */,
+				100000000000000000000008 /* WorkoutFixturesHealthKit in Frameworks */,
+				100000000000000000000009 /* WorkoutFixturesTestSupport in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		400000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				10000000000000000000000A /* WorkoutFixtures in Frameworks */,
+				10000000000000000000000B /* WorkoutFixturesHealthKit in Frameworks */,
+				10000000000000000000000C /* WorkoutFixturesTestSupport in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		400000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		500000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				500000000000000000000002 /* WorkoutFixturesHost */,
+				500000000000000000000003 /* WorkoutFixturesHostTests */,
+				500000000000000000000004 /* WorkoutFixturesHostUITests */,
+				500000000000000000000005 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		500000000000000000000002 /* WorkoutFixturesHost */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000001 /* WorkoutFixturesHostApp.swift */,
+				200000000000000000000002 /* ContentView.swift */,
+				200000000000000000000003 /* HostViewModel.swift */,
+				200000000000000000000004 /* FixtureDocument.swift */,
+				200000000000000000000005 /* WorkoutFixturesHost.entitlements */,
+				20000000000000000000000C /* Info.plist */,
+			);
+			path = WorkoutFixturesHost;
+			sourceTree = "<group>";
+		};
+		500000000000000000000003 /* WorkoutFixturesHostTests */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000006 /* HostViewModelTests.swift */,
+				20000000000000000000000B /* HealthKitIntegrationTests.swift */,
+			);
+			path = WorkoutFixturesHostTests;
+			sourceTree = "<group>";
+		};
+		500000000000000000000004 /* WorkoutFixturesHostUITests */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000007 /* WorkoutFixturesHostUITests.swift */,
+			);
+			path = WorkoutFixturesHostUITests;
+			sourceTree = "<group>";
+		};
+		500000000000000000000005 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000008 /* WorkoutFixturesHost.app */,
+				200000000000000000000009 /* WorkoutFixturesHostTests.xctest */,
+				20000000000000000000000A /* WorkoutFixturesHostUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B00000000000000000000001 /* WorkoutFixturesHost */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C00000000000000000000001 /* Build configuration list for PBXNativeTarget "WorkoutFixturesHost" */;
+			buildPhases = (
+				600000000000000000000001 /* Sources */,
+				400000000000000000000001 /* Frameworks */,
+				700000000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WorkoutFixturesHost;
+			packageProductDependencies = (
+				E00000000000000000000002 /* WorkoutFixtures */,
+				E00000000000000000000003 /* WorkoutFixturesHealthKit */,
+				E00000000000000000000004 /* WorkoutFixturesTestSupport */,
+			);
+			productName = WorkoutFixturesHost;
+			productReference = 200000000000000000000008 /* WorkoutFixturesHost.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B00000000000000000000002 /* WorkoutFixturesHostTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C00000000000000000000002 /* Build configuration list for PBXNativeTarget "WorkoutFixturesHostTests" */;
+			buildPhases = (
+				600000000000000000000002 /* Sources */,
+				400000000000000000000002 /* Frameworks */,
+				700000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				800000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = WorkoutFixturesHostTests;
+			packageProductDependencies = (
+				E00000000000000000000005 /* WorkoutFixtures */,
+				E00000000000000000000006 /* WorkoutFixturesHealthKit */,
+				E00000000000000000000007 /* WorkoutFixturesTestSupport */,
+			);
+			productName = WorkoutFixturesHostTests;
+			productReference = 200000000000000000000009 /* WorkoutFixturesHostTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		B00000000000000000000003 /* WorkoutFixturesHostUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C00000000000000000000003 /* Build configuration list for PBXNativeTarget "WorkoutFixturesHostUITests" */;
+			buildPhases = (
+				600000000000000000000003 /* Sources */,
+				400000000000000000000003 /* Frameworks */,
+				700000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				800000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = WorkoutFixturesHostUITests;
+			productName = WorkoutFixturesHostUITests;
+			productReference = 20000000000000000000000A /* WorkoutFixturesHostUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					B00000000000000000000001 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					B00000000000000000000002 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = B00000000000000000000001;
+					};
+					B00000000000000000000003 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = B00000000000000000000001;
+					};
+				};
+			};
+			buildConfigurationList = C00000000000000000000004 /* Build configuration list for PBXProject "WorkoutFixturesHost" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 500000000000000000000001;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */,
+			);
+			productRefGroup = 500000000000000000000005 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B00000000000000000000001 /* WorkoutFixturesHost */,
+				B00000000000000000000002 /* WorkoutFixturesHostTests */,
+				B00000000000000000000003 /* WorkoutFixturesHostUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		700000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		700000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		700000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		600000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000001 /* WorkoutFixturesHostApp.swift in Sources */,
+				100000000000000000000002 /* ContentView.swift in Sources */,
+				100000000000000000000003 /* HostViewModel.swift in Sources */,
+				100000000000000000000004 /* FixtureDocument.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		600000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000005 /* HostViewModelTests.swift in Sources */,
+				10000000000000000000000D /* HealthKitIntegrationTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		600000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000006 /* WorkoutFixturesHostUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		800000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B00000000000000000000001 /* WorkoutFixturesHost */;
+			targetProxy = 300000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		800000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B00000000000000000000001 /* WorkoutFixturesHost */;
+			targetProxy = 300000000000000000000002 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D00000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = WorkoutFixturesHost/WorkoutFixturesHost.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SATYASXVS5;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WorkoutFixturesHost/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.workoutfixtures.host;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_NONISOLATED_NONSENDING_BY_DEFAULT = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D00000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = WorkoutFixturesHost/WorkoutFixturesHost.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SATYASXVS5;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WorkoutFixturesHost/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.workoutfixtures.host;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_NONISOLATED_NONSENDING_BY_DEFAULT = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D00000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.workoutfixtures.host.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WorkoutFixturesHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WorkoutFixturesHost";
+				TEST_TARGET_NAME = WorkoutFixturesHost;
+			};
+			name = Debug;
+		};
+		D00000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.workoutfixtures.host.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WorkoutFixturesHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WorkoutFixturesHost";
+				TEST_TARGET_NAME = WorkoutFixturesHost;
+			};
+			name = Release;
+		};
+		D00000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.workoutfixtures.host.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = WorkoutFixturesHost;
+			};
+			name = Debug;
+		};
+		D00000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.workoutfixtures.host.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = WorkoutFixturesHost;
+			};
+			name = Release;
+		};
+		D00000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D00000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C00000000000000000000001 /* Build configuration list for PBXNativeTarget "WorkoutFixturesHost" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00000000000000000000001 /* Debug */,
+				D00000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C00000000000000000000002 /* Build configuration list for PBXNativeTarget "WorkoutFixturesHostTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00000000000000000000003 /* Debug */,
+				D00000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C00000000000000000000003 /* Build configuration list for PBXNativeTarget "WorkoutFixturesHostUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00000000000000000000005 /* Debug */,
+				D00000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C00000000000000000000004 /* Build configuration list for PBXProject "WorkoutFixturesHost" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00000000000000000000007 /* Debug */,
+				D00000000000000000000008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E00000000000000000000002 /* WorkoutFixtures */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */;
+			productName = WorkoutFixtures;
+		};
+		E00000000000000000000003 /* WorkoutFixturesHealthKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */;
+			productName = WorkoutFixturesHealthKit;
+		};
+		E00000000000000000000004 /* WorkoutFixturesTestSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */;
+			productName = WorkoutFixturesTestSupport;
+		};
+		E00000000000000000000005 /* WorkoutFixtures */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */;
+			productName = WorkoutFixtures;
+		};
+		E00000000000000000000006 /* WorkoutFixturesHealthKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */;
+			productName = WorkoutFixturesHealthKit;
+		};
+		E00000000000000000000007 /* WorkoutFixturesTestSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E00000000000000000000001 /* XCLocalSwiftPackageReference "../.." */;
+			productName = WorkoutFixturesTestSupport;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A00000000000000000000001 /* Project object */;
+}

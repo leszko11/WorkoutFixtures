@@ -1,0 +1,28 @@
+{
+  "transforms": [
+    {
+      "integerRange": { "lowerBound": 7, "upperBound": 21 },
+      "kind": "shiftDate"
+    },
+    {
+      "kind": "scaleDuration",
+      "valueRange": { "lowerBound": 0.9, "upperBound": 1.1 }
+    },
+    {
+      "kind": "scaleMetric",
+      "metric": "distance",
+      "valueRange": { "lowerBound": 0.95, "upperBound": 1.05 }
+    },
+    {
+      "kind": "addNoise",
+      "maximum": 210,
+      "metric": "heartRate",
+      "minimum": 35,
+      "standardDeviation": 3
+    },
+    {
+      "coordinate": { "latitude": 52.2297, "longitude": 21.0122 },
+      "kind": "translateRoute"
+    }
+  ]
+}
