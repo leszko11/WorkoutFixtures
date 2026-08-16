@@ -10,7 +10,7 @@ public struct WorkoutFixtureCommand: AsyncParsableCommand {
     version: "1.0.0",
     subcommands: [
       Inspect.self, Validate.self, Split.self, Redact.self, Generate.self, Migrate.self,
-      Schema.self,
+      ImportGPX.self, Schema.self,
     ]
   )
 
@@ -21,6 +21,9 @@ public enum DiagnosticsFormat: String, ExpressibleByArgument, Sendable {
   case text
   case json
 }
+
+extension WorkoutActivity: ExpressibleByArgument {}
+extension WorkoutLocation: ExpressibleByArgument {}
 
 struct DiagnosticsOptions: ParsableArguments {
   @Option(name: .long, help: "Diagnostic output format: text or json.")
@@ -420,6 +423,57 @@ extension WorkoutFixtureCommand {
         try WorkoutValidator().requireValid(fixture)
         try CLIIO.write(try CLIIO.codec.encode(fixture), to: output)
         print("Wrote canonical fixture to \(output)")
+      } catch {
+        try CLIIO.fail(error, format: diagnostics.diagnosticsFormat)
+      }
+    }
+  }
+
+  public struct ImportGPX: AsyncParsableCommand {
+    public static let configuration = CommandConfiguration(
+      commandName: "import-gpx",
+      abstract: "Create a validated workout fixture from a GPX track."
+    )
+
+    @Argument(help: "Path to the input GPX file.")
+    var input: String
+
+    @Option(name: .long, help: "Destination fixture JSON path.")
+    var output: String
+
+    @Option(name: .long, help: "Workout activity: running, walking, or cycling.")
+    var activity: WorkoutActivity = .running
+
+    @Option(name: .long, help: "Workout location: indoor, outdoor, or unknown.")
+    var location: WorkoutLocation = .outdoor
+
+    @Option(name: .long, help: "Fixture identifier (defaults to one derived from the track).")
+    var id: String?
+
+    @Option(name: .customLong("time-zone"), help: "IANA time-zone identifier for the workout.")
+    var timeZoneIdentifier: String = "UTC"
+
+    @Flag(name: .customLong("no-distance-series"), help: "Skip the derived distance series.")
+    var noDistanceSeries = false
+
+    @OptionGroup var diagnostics: DiagnosticsOptions
+
+    public init() {}
+
+    public func run() async throws {
+      do {
+        var options = GPXImportOptions()
+        options.activity = activity
+        options.location = location
+        options.id = id.map(WorkoutID.init(rawValue:))
+        options.timeZoneIdentifier = timeZoneIdentifier
+        options.deriveDistanceSeries = !noDistanceSeries
+        let fixture = try GPXWorkoutImporter().fixture(
+          contentsOf: URL(fileURLWithPath: input),
+          options: options
+        )
+        try CLIIO.write(try CLIIO.codec.encode(fixture), to: output)
+        print("Wrote fixture '\(fixture.id.rawValue)' to \(output)")
       } catch {
         try CLIIO.fail(error, format: diagnostics.diagnosticsFormat)
       }

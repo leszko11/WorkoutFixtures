@@ -21,6 +21,11 @@ struct CommandParsingTests {
       ["schema", "fixture"],
       ["schema", "archive"],
       ["schema", "recipe"],
+      ["import-gpx", "track.gpx", "--output", "fixture.json"],
+      [
+        "import-gpx", "track.gpx", "--output", "fixture.json", "--activity", "cycling",
+        "--location", "outdoor", "--time-zone", "Europe/Warsaw", "--no-distance-series",
+      ],
     ])
   func parses(_ arguments: [String]) throws {
     _ = try WorkoutFixtureCommand.parseAsRoot(arguments)

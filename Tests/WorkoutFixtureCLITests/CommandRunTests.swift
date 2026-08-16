@@ -200,6 +200,45 @@ struct CommandRunTests {
     }
   }
 
+  @Test("Import-gpx writes a validated fixture")
+  func importGPXWritesFixture() async throws {
+    let workspace = try Workspace()
+    let gpxPath = workspace.path("track.gpx")
+    let gpx = """
+      <?xml version="1.0" encoding="UTF-8"?>
+      <gpx version="1.1" creator="test">
+        <trk><name>Morning Run</name><trkseg>
+          <trkpt lat="52.2297" lon="21.0122"><time>2026-06-01T06:00:00Z</time></trkpt>
+          <trkpt lat="52.2307" lon="21.0122"><time>2026-06-01T06:01:00Z</time></trkpt>
+          <trkpt lat="52.2317" lon="21.0122"><time>2026-06-01T06:02:00Z</time></trkpt>
+        </trkseg></trk>
+      </gpx>
+      """
+    try Data(gpx.utf8).write(to: URL(fileURLWithPath: gpxPath))
+    let output = workspace.path("imported.json")
+
+    try await runCommand([
+      "import-gpx", gpxPath, "--output", output, "--id", "gpx-morning-run",
+    ])
+
+    let fixture = try FixtureJSONCodec().decode(Data(contentsOf: URL(fileURLWithPath: output)))
+    #expect(fixture.id == "gpx-morning-run")
+    #expect(fixture.route?.points.count == 3)
+    #expect(fixture.total(for: .distance) != nil)
+    #expect(WorkoutValidator().validate(fixture).contains { $0.severity == .error } == false)
+  }
+
+  @Test("Import-gpx fails cleanly on malformed input")
+  func importGPXFailsOnMalformedInput() async throws {
+    let workspace = try Workspace()
+    let gpxPath = workspace.path("broken.gpx")
+    try Data("not xml".utf8).write(to: URL(fileURLWithPath: gpxPath))
+
+    await #expect(throws: ExitCode.failure) {
+      try await runCommand(["import-gpx", gpxPath, "--output", workspace.path("out.json")])
+    }
+  }
+
   @Test("Schema prints all bundled schemas", arguments: ["fixture", "archive", "recipe"])
   func schemaCommandRuns(_ kind: String) async throws {
     try await runCommand(["schema", kind])
