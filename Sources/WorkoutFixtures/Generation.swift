@@ -431,7 +431,9 @@ extension WorkoutFixture {
       },
       provenance: FixtureProvenance(
         kind: provenance.kind,
-        createdAt: shiftProvenanceCreatedAt ? try shift(provenance.createdAt) : provenance.createdAt,
+        createdAt: shiftProvenanceCreatedAt
+          ? try shift(provenance.createdAt)
+          : provenance.createdAt,
         sourceFixtureID: provenance.sourceFixtureID,
         generatorVersion: provenance.generatorVersion,
         seed: provenance.seed,

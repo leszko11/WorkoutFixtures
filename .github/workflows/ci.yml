@@ -5,42 +5,84 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  portable-linux:
+  lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: swift-actions/setup-swift@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: swift-actions/setup-swift@7591e4f04c00624cb043783da51a7fd6ee0a6bf6 # v2
         with:
           swift-version: "6.2"
+      - name: Lint formatting
+        run: make lint
+
+  portable-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: swift-actions/setup-swift@7591e4f04c00624cb043783da51a7fd6ee0a6bf6 # v2
+        with:
+          swift-version: "6.2"
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-swiftpm-${{ hashFiles('Package.resolved') }}
+          restore-keys: ${{ runner.os }}-swiftpm-
       - name: Test portable package
         run: swift test
+      - name: Smoke-test the CLI
+        run: make smoke
 
   apple-platforms:
     runs-on: macos-26
+    timeout-minutes: 45
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Verify reusable signing configuration
         run: |
           if /usr/bin/grep -Eq 'DEVELOPMENT_TEAM = ("[^"]+"|[^";][^;]*);' Examples/WorkoutFixturesHost/WorkoutFixturesHost.xcodeproj/project.pbxproj; then
             echo "Do not commit a personal Apple development team to the host app."
             exit 1
           fi
-      - name: Verify latest stable Xcode
-        run: |
-          xcodebuild -version
-          test "$(xcodebuild -version | /usr/bin/sed -n '1p')" = "Xcode 26.6"
+      - name: Show Xcode version
+        run: xcodebuild -version
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-swiftpm-${{ hashFiles('Package.resolved') }}
+          restore-keys: ${{ runner.os }}-swiftpm-
       - name: Test Swift package
         run: swift test
+      - name: Select an available iPhone simulator
+        id: simulator
+        run: |
+          udid=$(xcrun simctl list devices available -j | /usr/bin/jq -r '[.devices[][] | select(.name | test("^iPhone"))][0].udid')
+          test -n "$udid"
+          test "$udid" != "null"
+          echo "Selected simulator: $udid"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
       - name: Build and test host app
         run: >-
           xcodebuild test
           -project Examples/WorkoutFixturesHost/WorkoutFixturesHost.xcodeproj
           -scheme WorkoutFixturesHost
-          -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+          -destination "id=${{ steps.simulator.outputs.udid }}"
           -only-testing:WorkoutFixturesHostTests
           -only-testing:WorkoutFixturesHostUITests
+          -resultBundlePath HostTestResults.xcresult
           CODE_SIGNING_ALLOWED=NO
           ONLY_ACTIVE_ARCH=YES
+      - name: Upload host result bundle
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: host-test-results
+          path: HostTestResults.xcresult
