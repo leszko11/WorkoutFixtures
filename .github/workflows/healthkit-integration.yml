@@ -1,0 +1,28 @@
+name: HealthKit Integration
+
+on:
+  workflow_dispatch:
+
+jobs:
+  healthkit-round-trip:
+    # This runner must have an entitled build identity and a simulator whose
+    # HealthKit authorization has been granted to dev.workoutfixtures.host.
+    runs-on: [self-hosted, macOS, healthkit]
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify latest stable Xcode
+        run: |
+          xcodebuild -version
+          test "$(xcodebuild -version | /usr/bin/sed -n '1p')" = "Xcode 26.6"
+      - name: Run serialized HealthKit round trip
+        env:
+          WORKOUT_FIXTURES_HEALTHKIT_INTEGRATION: "1"
+        run: >-
+          xcodebuild test
+          -project Examples/WorkoutFixturesHost/WorkoutFixturesHost.xcodeproj
+          -scheme WorkoutFixturesHost
+          -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+          -only-testing:WorkoutFixturesHostTests/HealthKitIntegrationTests
+          ONLY_ACTIVE_ARCH=YES

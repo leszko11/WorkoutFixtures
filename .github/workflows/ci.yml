@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  portable-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.2"
+      - name: Test portable package
+        run: swift test
+
+  apple-platforms:
+    runs-on: macos-26
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify reusable signing configuration
+        run: |
+          if /usr/bin/grep -Eq 'DEVELOPMENT_TEAM = ("[^"]+"|[^";][^;]*);' Examples/WorkoutFixturesHost/WorkoutFixturesHost.xcodeproj/project.pbxproj; then
+            echo "Do not commit a personal Apple development team to the host app."
+            exit 1
+          fi
+      - name: Verify latest stable Xcode
+        run: |
+          xcodebuild -version
+          test "$(xcodebuild -version | /usr/bin/sed -n '1p')" = "Xcode 26.6"
+      - name: Test Swift package
+        run: swift test
+      - name: Build and test host app
+        run: >-
+          xcodebuild test
+          -project Examples/WorkoutFixturesHost/WorkoutFixturesHost.xcodeproj
+          -scheme WorkoutFixturesHost
+          -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+          -only-testing:WorkoutFixturesHostTests
+          -only-testing:WorkoutFixturesHostUITests
+          CODE_SIGNING_ALLOWED=NO
+          ONLY_ACTIVE_ARCH=YES
