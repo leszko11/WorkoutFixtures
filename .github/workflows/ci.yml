@@ -38,6 +38,27 @@ jobs:
         run: swift test
       - name: Smoke-test the CLI
         run: make smoke
+      # The runtime never executes the bundled JSON Schemas (strict decoding is
+      # implemented in Swift), so this is the only check that they stay in sync
+      # with what the codecs actually emit.
+      - name: Validate emitted JSON against the bundled schemas
+        run: |
+          rm -rf .schema-check
+          swift run workout-fixture generate \
+            Sources/WorkoutFixturesTestSupport/Resources/Fixtures/outdoor-run.json \
+            --recipe Examples/focused-recipe.json \
+            --count 2 --seed 42 --output-directory .schema-check
+          npx --yes -p ajv-cli@5 -p ajv-formats@2 ajv validate --spec=draft2020 -c ajv-formats \
+            -s Sources/WorkoutFixtures/Resources/WorkoutFixture.schema.json \
+            -d "Sources/WorkoutFixturesTestSupport/Resources/Fixtures/*.json" \
+            -d ".schema-check/*.json"
+          npx --yes -p ajv-cli@5 -p ajv-formats@2 ajv validate --spec=draft2020 -c ajv-formats \
+            -s Sources/WorkoutFixtures/Resources/GenerationRecipe.schema.json \
+            -d Examples/focused-recipe.json
+          npx --yes -p ajv-cli@5 -p ajv-formats@2 ajv compile --spec=draft2020 -c ajv-formats \
+            -r Sources/WorkoutFixtures/Resources/WorkoutFixture.schema.json \
+            -s Sources/WorkoutFixtures/Resources/WorkoutFixtureArchive.schema.json
+          rm -rf .schema-check
 
   apple-platforms:
     runs-on: macos-26

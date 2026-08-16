@@ -97,6 +97,7 @@ then select fixtures with `app.launchEnvironment["WORKOUT_FIXTURES_MODE"] =
   valid when editing.
 - The pbxproj uses hand-maintained synthetic IDs (`1…`, `2…`, `E…`); follow the
   existing pattern when adding files to the host project.
-- CI (`.github/workflows/ci.yml`): lint + Linux tests + CLI smoke + macOS
-  package/host tests. The signing guard fails the build if a
-  `DEVELOPMENT_TEAM` is committed to the host project — never commit one.
+- CI (`.github/workflows/ci.yml`): lint + Linux tests + CLI smoke + ajv
+  schema-conformance check + macOS package/host tests. The signing guard fails
+  the build if a `DEVELOPMENT_TEAM` is committed to the host project — never
+  commit one.

@@ -2,6 +2,8 @@
   import SwiftUI
   import UniformTypeIdentifiers
   import WorkoutFixtures
+  import WorkoutFixturesHealthKit
+  import WorkoutFixturesTestSupport
 
   /// A drop-in debug panel for capturing, exporting, importing, and replaying
   /// workout fixtures.
@@ -270,4 +272,27 @@
       }
     }
   }
+
+  #if DEBUG
+    #Preview {
+      WorkoutFixtureDebugView(model: makePreviewModel())
+    }
+
+    @MainActor
+    private func makePreviewModel() -> WorkoutFixtureDebugModel {
+      struct PreviewAuthorizer: HealthAuthorizing {
+        func requestAuthorization(for access: HealthKitWorkoutAccess) async throws {}
+      }
+      let store = InMemoryWorkoutStore(fixtures: (try? WorkoutFixturePreset.allFixtures()) ?? [])
+      let model = WorkoutFixtureDebugModel(
+        source: store,
+        sink: store,
+        authorization: PreviewAuthorizer(),
+        requestsAuthorization: false,
+        loadsBundledFixtureOnLaunch: false
+      )
+      model.authorizeAndRefresh()
+      return model
+    }
+  #endif
 #endif

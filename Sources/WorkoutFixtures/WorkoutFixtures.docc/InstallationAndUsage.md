@@ -8,7 +8,7 @@ Add WorkoutFixtures to your `Package.swift`:
 
 ```swift
 dependencies: [
-  .package(url: "https://github.com/<organization>/WorkoutFixtures.git", from: "1.0.0")
+  .package(url: "https://github.com/leszko11/WorkoutFixtures.git", from: "1.0.0")
 ]
 ```
 

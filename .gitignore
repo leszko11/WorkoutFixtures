@@ -74,8 +74,9 @@ playground.xcworkspace
 
 .build/
 
-# CLI smoke-test scratch output (make smoke)
+# CLI smoke-test and schema-check scratch output (make smoke, CI schema step)
 .smoke/
+.schema-check/
 
 # CocoaPods
 #

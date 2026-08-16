@@ -71,6 +71,60 @@ struct SourceAndRedactionTests {
     #expect(WorkoutValidator().validate(first).contains { $0.severity == .error } == false)
   }
 
+  @Test(
+    "Redaction policies preserve exactly what they promise",
+    arguments: [
+      (preserveRoute: false, preserveSource: false),
+      (preserveRoute: false, preserveSource: true),
+      (preserveRoute: true, preserveSource: false),
+      (preserveRoute: true, preserveSource: true),
+    ])
+  func redactionPolicyCombinations(_ combo: (preserveRoute: Bool, preserveSource: Bool)) throws {
+    let preset = try WorkoutFixturePreset.outdoorRun.fixture()
+    let captured = WorkoutFixture(
+      id: preset.id,
+      workout: preset.workout,
+      series: preset.series,
+      events: preset.events,
+      route: preset.route,
+      provenance: FixtureProvenance(
+        kind: .captured,
+        createdAt: preset.provenance.createdAt,
+        sourceFixtureID: nil,
+        generatorVersion: nil,
+        seed: nil,
+        source: SourceProvenance(
+          name: "Test App",
+          bundleIdentifier: "dev.workoutfixtures.tests",
+          version: "1.0",
+          deviceModel: "iPhone"
+        )
+      )
+    )
+    #expect(captured.route != nil)
+    #expect(captured.provenance.source != nil)
+
+    let policy = RedactionPolicy(
+      regenerateID: true,
+      removeRoute: !combo.preserveRoute,
+      removeSourceMetadata: !combo.preserveSource,
+      shiftDates: true
+    )
+    let redacted = try WorkoutRedactor().redact(captured, using: policy, seed: 7)
+
+    #expect((redacted.route != nil) == combo.preserveRoute)
+    #expect((redacted.provenance.source != nil) == combo.preserveSource)
+    if combo.preserveRoute {
+      #expect(redacted.route?.points.count == captured.route?.points.count)
+    }
+    if combo.preserveSource {
+      #expect(redacted.provenance.source == captured.provenance.source)
+    }
+    #expect(redacted.id != captured.id)
+    #expect(redacted.workout.startDate != captured.workout.startDate)
+    #expect(WorkoutValidator().validate(redacted).contains { $0.severity == .error } == false)
+  }
+
   @Test("Redacted output does not reveal the seed that shifted its dates")
   func redactionDoesNotLeakSeed() throws {
     let captured = try WorkoutFixturePreset.outdoorRun.fixture()
