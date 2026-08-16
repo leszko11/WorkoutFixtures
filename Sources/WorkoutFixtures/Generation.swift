@@ -40,7 +40,7 @@ public struct Coordinate: Codable, Equatable, Sendable {
   }
 }
 
-public enum GenerationTransformKind: String, Codable, Sendable {
+enum GenerationTransformKind: String, Codable, Sendable {
   case shiftDate
   case scaleDuration
   case scaleMetric
@@ -52,88 +52,121 @@ public enum GenerationTransformKind: String, Codable, Sendable {
   case removeRoute
 }
 
-public struct GenerationTransform: Codable, Equatable, Sendable {
-  public let kind: GenerationTransformKind
-  public let metric: MetricIdentifier?
-  public let integerRange: IntegerRange?
-  public let valueRange: DoubleRange?
-  public let standardDeviation: Double?
-  public let minimum: Double?
-  public let maximum: Double?
-  public let intervalSeconds: TimeInterval?
-  public let coordinate: Coordinate?
-  public let degrees: Double?
-  public let maxMeters: Double?
+public enum GenerationTransform: Codable, Equatable, Sendable {
+  case shiftDate(days: IntegerRange)
+  case scaleDuration(DoubleRange)
+  case scaleMetric(MetricIdentifier, factor: DoubleRange)
+  case addNoise(to: MetricIdentifier, standardDeviation: Double, bounds: ClosedRange<Double>?)
+  case resample(MetricIdentifier, every: TimeInterval)
+  case translateRoute(to: Coordinate)
+  case rotateRoute(degrees: Double)
+  case jitterRoute(maxMeters: Double)
+  case removeRoute
 
-  public init(
-    kind: GenerationTransformKind,
-    metric: MetricIdentifier? = nil,
-    integerRange: IntegerRange? = nil,
-    valueRange: DoubleRange? = nil,
-    standardDeviation: Double? = nil,
-    minimum: Double? = nil,
-    maximum: Double? = nil,
-    intervalSeconds: TimeInterval? = nil,
-    coordinate: Coordinate? = nil,
-    degrees: Double? = nil,
-    maxMeters: Double? = nil
-  ) {
-    self.kind = kind
-    self.metric = metric
-    self.integerRange = integerRange
-    self.valueRange = valueRange
-    self.standardDeviation = standardDeviation
-    self.minimum = minimum
-    self.maximum = maximum
-    self.intervalSeconds = intervalSeconds
-    self.coordinate = coordinate
-    self.degrees = degrees
-    self.maxMeters = maxMeters
+  private enum CodingKeys: String, CodingKey {
+    case kind
+    case metric
+    case integerRange
+    case valueRange
+    case standardDeviation
+    case minimum
+    case maximum
+    case intervalSeconds
+    case coordinate
+    case degrees
+    case maxMeters
   }
 
-  public static func shiftDate(days: IntegerRange) -> Self {
-    Self(kind: .shiftDate, integerRange: days)
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    switch try container.decode(GenerationTransformKind.self, forKey: .kind) {
+    case .shiftDate:
+      self = .shiftDate(days: try container.decode(IntegerRange.self, forKey: .integerRange))
+    case .scaleDuration:
+      self = .scaleDuration(try container.decode(DoubleRange.self, forKey: .valueRange))
+    case .scaleMetric:
+      self = .scaleMetric(
+        try container.decode(MetricIdentifier.self, forKey: .metric),
+        factor: try container.decode(DoubleRange.self, forKey: .valueRange)
+      )
+    case .addNoise:
+      self = .addNoise(
+        to: try container.decode(MetricIdentifier.self, forKey: .metric),
+        standardDeviation: try container.decode(Double.self, forKey: .standardDeviation),
+        bounds: try Self.decodeNoiseBounds(from: container)
+      )
+    case .resample:
+      self = .resample(
+        try container.decode(MetricIdentifier.self, forKey: .metric),
+        every: try container.decode(TimeInterval.self, forKey: .intervalSeconds)
+      )
+    case .translateRoute:
+      self = .translateRoute(to: try container.decode(Coordinate.self, forKey: .coordinate))
+    case .rotateRoute:
+      self = .rotateRoute(degrees: try container.decode(Double.self, forKey: .degrees))
+    case .jitterRoute:
+      self = .jitterRoute(maxMeters: try container.decode(Double.self, forKey: .maxMeters))
+    case .removeRoute:
+      self = .removeRoute
+    }
   }
 
-  public static func scaleDuration(_ factor: DoubleRange) -> Self {
-    Self(kind: .scaleDuration, valueRange: factor)
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    switch self {
+    case .shiftDate(let days):
+      try container.encode(GenerationTransformKind.shiftDate, forKey: .kind)
+      try container.encode(days, forKey: .integerRange)
+    case .scaleDuration(let factor):
+      try container.encode(GenerationTransformKind.scaleDuration, forKey: .kind)
+      try container.encode(factor, forKey: .valueRange)
+    case .scaleMetric(let metric, let factor):
+      try container.encode(GenerationTransformKind.scaleMetric, forKey: .kind)
+      try container.encode(metric, forKey: .metric)
+      try container.encode(factor, forKey: .valueRange)
+    case .addNoise(let metric, let standardDeviation, let bounds):
+      try container.encode(GenerationTransformKind.addNoise, forKey: .kind)
+      try container.encode(metric, forKey: .metric)
+      try container.encode(standardDeviation, forKey: .standardDeviation)
+      try container.encodeIfPresent(bounds?.lowerBound, forKey: .minimum)
+      try container.encodeIfPresent(bounds?.upperBound, forKey: .maximum)
+    case .resample(let metric, let interval):
+      try container.encode(GenerationTransformKind.resample, forKey: .kind)
+      try container.encode(metric, forKey: .metric)
+      try container.encode(interval, forKey: .intervalSeconds)
+    case .translateRoute(let coordinate):
+      try container.encode(GenerationTransformKind.translateRoute, forKey: .kind)
+      try container.encode(coordinate, forKey: .coordinate)
+    case .rotateRoute(let degrees):
+      try container.encode(GenerationTransformKind.rotateRoute, forKey: .kind)
+      try container.encode(degrees, forKey: .degrees)
+    case .jitterRoute(let maxMeters):
+      try container.encode(GenerationTransformKind.jitterRoute, forKey: .kind)
+      try container.encode(maxMeters, forKey: .maxMeters)
+    case .removeRoute:
+      try container.encode(GenerationTransformKind.removeRoute, forKey: .kind)
+    }
   }
 
-  public static func scaleMetric(_ metric: MetricIdentifier, factor: DoubleRange) -> Self {
-    Self(kind: .scaleMetric, metric: metric, valueRange: factor)
+  private static func decodeNoiseBounds(
+    from container: KeyedDecodingContainer<CodingKeys>
+  ) throws -> ClosedRange<Double>? {
+    let minimum = try container.decodeIfPresent(Double.self, forKey: .minimum)
+    let maximum = try container.decodeIfPresent(Double.self, forKey: .maximum)
+    switch (minimum, maximum) {
+    case (nil, nil):
+      return nil
+    case (let minimum?, let maximum?) where minimum <= maximum:
+      return minimum...maximum
+    default:
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: container.codingPath,
+          debugDescription:
+            "addNoise bounds require both minimum and maximum with minimum <= maximum."
+        ))
+    }
   }
-
-  public static func addNoise(
-    to metric: MetricIdentifier,
-    standardDeviation: Double,
-    bounds: ClosedRange<Double>? = nil
-  ) -> Self {
-    Self(
-      kind: .addNoise,
-      metric: metric,
-      standardDeviation: standardDeviation,
-      minimum: bounds?.lowerBound,
-      maximum: bounds?.upperBound
-    )
-  }
-
-  public static func resample(_ metric: MetricIdentifier, every interval: TimeInterval) -> Self {
-    Self(kind: .resample, metric: metric, intervalSeconds: interval)
-  }
-
-  public static func translateRoute(to coordinate: Coordinate) -> Self {
-    Self(kind: .translateRoute, coordinate: coordinate)
-  }
-
-  public static func rotateRoute(degrees: Double) -> Self {
-    Self(kind: .rotateRoute, degrees: degrees)
-  }
-
-  public static func jitterRoute(maxMeters: Double) -> Self {
-    Self(kind: .jitterRoute, maxMeters: maxMeters)
-  }
-
-  public static var removeRoute: Self { Self(kind: .removeRoute) }
 }
 
 public struct GenerationRecipe: Codable, Equatable, Sendable {
@@ -236,30 +269,23 @@ public struct TemplateWorkoutGenerator: WorkoutGenerating, Sendable {
     to fixture: WorkoutFixture,
     random: inout SplitMix64
   ) throws -> WorkoutFixture {
-    switch transform.kind {
-    case .shiftDate:
-      guard let range = transform.integerRange, range.lowerBound <= range.upperBound else {
+    switch transform {
+    case .shiftDate(let days):
+      guard days.lowerBound <= days.upperBound else {
         throw GenerationError.invalidTransform(
           index: index, message: "shiftDate requires a valid integerRange.")
       }
       return try fixture.shiftingDates(
-        byDays: random.nextInt(in: range.lowerBound...range.upperBound)
+        byDays: random.nextInt(in: days.lowerBound...days.upperBound)
       )
-    case .scaleDuration:
-      guard let range = transform.valueRange,
-        range.lowerBound > 0,
-        range.lowerBound <= range.upperBound
-      else {
+    case .scaleDuration(let range):
+      guard range.lowerBound > 0, range.lowerBound <= range.upperBound else {
         throw GenerationError.invalidTransform(
           index: index, message: "scaleDuration requires a positive valueRange.")
       }
       return fixture.scalingTimeline(by: random.nextDouble(in: range.lowerBound...range.upperBound))
-    case .scaleMetric:
-      guard let metric = transform.metric,
-        let range = transform.valueRange,
-        range.lowerBound >= 0,
-        range.lowerBound <= range.upperBound
-      else {
+    case .scaleMetric(let metric, let range):
+      guard range.lowerBound >= 0, range.lowerBound <= range.upperBound else {
         throw GenerationError.invalidTransform(
           index: index, message: "scaleMetric requires metric and nonnegative valueRange.")
       }
@@ -271,51 +297,40 @@ public struct TemplateWorkoutGenerator: WorkoutGenerating, Sendable {
           value: sample.value * factor
         )
       }
-    case .addNoise:
-      guard let metric = transform.metric,
-        let deviation = transform.standardDeviation,
-        deviation >= 0,
-        (transform.minimum == nil) == (transform.maximum == nil),
-        transform.minimum.map({ minimum in transform.maximum.map { minimum <= $0 } ?? false })
-          ?? true
-      else {
+    case .addNoise(let metric, let deviation, let bounds):
+      guard deviation >= 0 else {
         throw GenerationError.invalidTransform(
           index: index,
           message: "addNoise requires metric, nonnegative deviation, and valid optional bounds.")
       }
       return fixture.mappingSamples(for: metric) { sample in
         var value = sample.value + random.nextStandardNormal() * deviation
-        if let minimum = transform.minimum, let maximum = transform.maximum {
-          value = min(maximum, max(minimum, value))
+        if let bounds {
+          value = min(bounds.upperBound, max(bounds.lowerBound, value))
         }
         return MetricSample(startDate: sample.startDate, endDate: sample.endDate, value: value)
       }
-    case .resample:
-      guard let metric = transform.metric,
-        let interval = transform.intervalSeconds,
-        interval > 0
-      else {
+    case .resample(let metric, let interval):
+      guard interval > 0 else {
         throw GenerationError.invalidTransform(
           index: index, message: "resample requires metric and a positive intervalSeconds.")
       }
       return try fixture.resampling(metric, every: interval)
-    case .translateRoute:
-      guard let coordinate = transform.coordinate,
-        (-90...90).contains(coordinate.latitude),
-        (-180...180).contains(coordinate.longitude)
+    case .translateRoute(let coordinate):
+      guard (-90...90).contains(coordinate.latitude), (-180...180).contains(coordinate.longitude)
       else {
         throw GenerationError.invalidTransform(
           index: index, message: "translateRoute requires a valid coordinate.")
       }
       return fixture.mappingRoute { points in points.translated(to: coordinate) }
-    case .rotateRoute:
-      guard let degrees = transform.degrees, degrees.isFinite else {
+    case .rotateRoute(let degrees):
+      guard degrees.isFinite else {
         throw GenerationError.invalidTransform(
           index: index, message: "rotateRoute requires finite degrees.")
       }
       return fixture.mappingRoute { points in points.rotated(degrees: degrees) }
-    case .jitterRoute:
-      guard let maxMeters = transform.maxMeters, maxMeters >= 0, maxMeters.isFinite else {
+    case .jitterRoute(let maxMeters):
+      guard maxMeters >= 0, maxMeters.isFinite else {
         throw GenerationError.invalidTransform(
           index: index, message: "jitterRoute requires nonnegative maxMeters.")
       }

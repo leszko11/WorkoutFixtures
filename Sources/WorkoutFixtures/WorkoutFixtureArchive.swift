@@ -154,8 +154,8 @@ public struct FixtureArchiveJSONCodec: Sendable {
     get throws {
       guard
         let url = Bundle.module.url(
-          forResource: "WorkoutFixtureArchive.schema.json",
-          withExtension: nil
+          forResource: "WorkoutFixtureArchive.schema",
+          withExtension: "json"
         )
       else {
         throw CocoaError(.fileNoSuchFile)

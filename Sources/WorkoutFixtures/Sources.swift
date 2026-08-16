@@ -58,7 +58,8 @@ public struct JSONWorkoutSource: WorkoutFixtureSource, Sendable {
   public init(
     data: Data,
     fixtureCodec: FixtureJSONCodec = FixtureJSONCodec(),
-    archiveCodec: FixtureArchiveJSONCodec = FixtureArchiveJSONCodec()
+    archiveCodec: FixtureArchiveJSONCodec = FixtureArchiveJSONCodec(),
+    unknownFields: UnknownFieldPolicy = .reject
   ) throws {
     let raw = try JSONSerialization.jsonObject(with: data)
     guard let object = raw as? [String: Any] else {
@@ -66,20 +67,22 @@ public struct JSONWorkoutSource: WorkoutFixtureSource, Sendable {
     }
     let fixtures =
       try object["fixtures"] != nil
-      ? archiveCodec.decode(data, rootObject: object, unknownFields: .reject).fixtures
-      : [fixtureCodec.decode(data, rootObject: object, unknownFields: .reject)]
+      ? archiveCodec.decode(data, rootObject: object, unknownFields: unknownFields).fixtures
+      : [fixtureCodec.decode(data, rootObject: object, unknownFields: unknownFields)]
     source = InMemoryWorkoutSource(fixtures: fixtures)
   }
 
   public init(
     url: URL,
     fixtureCodec: FixtureJSONCodec = FixtureJSONCodec(),
-    archiveCodec: FixtureArchiveJSONCodec = FixtureArchiveJSONCodec()
+    archiveCodec: FixtureArchiveJSONCodec = FixtureArchiveJSONCodec(),
+    unknownFields: UnknownFieldPolicy = .reject
   ) throws {
     try self.init(
       data: Data(contentsOf: url),
       fixtureCodec: fixtureCodec,
-      archiveCodec: archiveCodec
+      archiveCodec: archiveCodec,
+      unknownFields: unknownFields
     )
   }
 
@@ -89,7 +92,8 @@ public struct JSONWorkoutSource: WorkoutFixtureSource, Sendable {
     withExtension fileExtension: String = "json",
     subdirectory: String? = nil,
     fixtureCodec: FixtureJSONCodec = FixtureJSONCodec(),
-    archiveCodec: FixtureArchiveJSONCodec = FixtureArchiveJSONCodec()
+    archiveCodec: FixtureArchiveJSONCodec = FixtureArchiveJSONCodec(),
+    unknownFields: UnknownFieldPolicy = .reject
   ) throws {
     let nested = bundle.url(
       forResource: resource,
@@ -100,7 +104,12 @@ public struct JSONWorkoutSource: WorkoutFixtureSource, Sendable {
     guard let url = nested ?? flattened else {
       throw CocoaError(.fileNoSuchFile)
     }
-    try self.init(url: url, fixtureCodec: fixtureCodec, archiveCodec: archiveCodec)
+    try self.init(
+      url: url,
+      fixtureCodec: fixtureCodec,
+      archiveCodec: archiveCodec,
+      unknownFields: unknownFields
+    )
   }
 
   /// All fixtures decoded from the JSON input, ordered by start date.

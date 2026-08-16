@@ -94,6 +94,54 @@ struct GenerationTests {
       })
   }
 
+  @Test("Invalid transforms fail at decode time")
+  func invalidTransformsFailDecoding() {
+    let payloads = [
+      #"{"kind": "scaleMetric"}"#,
+      #"{"kind": "warpTime"}"#,
+      #"{"kind": "addNoise", "metric": "heartRate", "standardDeviation": 3, "minimum": 10}"#,
+    ]
+    for payload in payloads {
+      #expect(throws: DecodingError.self) {
+        try JSONDecoder().decode(GenerationTransform.self, from: Data(payload.utf8))
+      }
+    }
+  }
+
+  @Test("Encoded transforms use the legacy flat field names")
+  func wireFormatUsesLegacyFieldNames() throws {
+    let expectations: [(GenerationTransform, Set<String>)] = [
+      (.shiftDate(days: IntegerRange(7...21)), ["kind", "integerRange"]),
+      (.scaleDuration(DoubleRange(0.9...1.1)), ["kind", "valueRange"]),
+      (
+        .scaleMetric(.distance, factor: DoubleRange(0.95...1.05)),
+        ["kind", "metric", "valueRange"]
+      ),
+      (
+        .addNoise(to: .heartRate, standardDeviation: 3, bounds: 35...210),
+        ["kind", "metric", "standardDeviation", "minimum", "maximum"]
+      ),
+      (
+        .addNoise(to: .heartRate, standardDeviation: 3, bounds: nil),
+        ["kind", "metric", "standardDeviation"]
+      ),
+      (.resample(.heartRate, every: 120), ["kind", "metric", "intervalSeconds"]),
+      (
+        .translateRoute(to: Coordinate(latitude: 50.0614, longitude: 19.9366)),
+        ["kind", "coordinate"]
+      ),
+      (.rotateRoute(degrees: 15), ["kind", "degrees"]),
+      (.jitterRoute(maxMeters: 4), ["kind", "maxMeters"]),
+      (.removeRoute, ["kind"]),
+    ]
+    for (transform, expectedKeys) in expectations {
+      let encoded = try JSONEncoder().encode(transform)
+      let object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+      #expect(Set(object.keys) == expectedKeys)
+      #expect(try JSONDecoder().decode(GenerationTransform.self, from: encoded) == transform)
+    }
+  }
+
   @Test("Cancellation is observed before work begins")
   func cancellation() async throws {
     let template = try WorkoutFixturePreset.outdoorRun.fixture()

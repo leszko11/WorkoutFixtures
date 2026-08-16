@@ -113,6 +113,10 @@ enum CanonicalFixtureJSON {
     return data
   }
 
+  // Constructed per call: ISO8601DateFormatter is not documented thread-safe, and
+  // `Date.ISO8601FormatStyle` is not byte-compatible with this configuration (it truncates
+  // instead of rounding fractional milliseconds on output and accepts timestamps without
+  // fractional seconds on input), so a cached Sendable style cannot replace it.
   private static func makeDateFormatter() -> ISO8601DateFormatter {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [
