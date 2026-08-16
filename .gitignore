@@ -2,8 +2,41 @@
 #
 # gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
 
-## User settings
+## Per-developer state and machine-specific paths
 xcuserdata/
+*.xcuserdatad/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.xcsettings
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+DerivedData/
+build/
+*.xcarchive/
+*.xcresult/
+*.xcactivitylog
+*.xccovreport
+*.xccovarchive
+.xcode.env.local
+*.local.xcconfig
+Local.xcconfig
+
+## Signing identities and provisioning profiles
+*.mobileprovision
+*.provisionprofile
+*.p12
+*.cer
+*.certSigningRequest
+*.developerprofile
+AuthKey_*.p8
 
 ## Obj-C/Swift specific
 *.hmap
@@ -12,6 +45,16 @@ xcuserdata/
 *.ipa
 *.dSYM.zip
 *.dSYM
+
+# macOS metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
 
 ## Playgrounds
 timeline.xctimeline
