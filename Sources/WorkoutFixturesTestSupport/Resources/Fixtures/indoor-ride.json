@@ -1,0 +1,39 @@
+{
+  "events" : [],
+  "id" : "indoor-ride",
+  "provenance" : { "createdAt" : "2026-06-03T17:00:00.000Z", "kind" : "authored" },
+  "schemaVersion" : 1,
+  "series" : [
+    {
+      "metric" : "heartRate",
+      "samples" : [
+        { "endDate" : "2026-06-03T17:15:00.000Z", "startDate" : "2026-06-03T17:00:00.000Z", "value" : 135 },
+        { "endDate" : "2026-06-03T17:30:00.000Z", "startDate" : "2026-06-03T17:15:00.000Z", "value" : 145 }
+      ],
+      "unit" : "count/min"
+    },
+    {
+      "metric" : "distance",
+      "samples" : [
+        { "endDate" : "2026-06-03T17:15:00.000Z", "startDate" : "2026-06-03T17:00:00.000Z", "value" : 5000 },
+        { "endDate" : "2026-06-03T17:30:00.000Z", "startDate" : "2026-06-03T17:15:00.000Z", "value" : 5500 }
+      ],
+      "unit" : "m"
+    },
+    {
+      "metric" : "activeEnergy",
+      "samples" : [
+        { "endDate" : "2026-06-03T17:15:00.000Z", "startDate" : "2026-06-03T17:00:00.000Z", "value" : 130 },
+        { "endDate" : "2026-06-03T17:30:00.000Z", "startDate" : "2026-06-03T17:15:00.000Z", "value" : 145 }
+      ],
+      "unit" : "kcal"
+    }
+  ],
+  "workout" : {
+    "activity" : "cycling",
+    "endDate" : "2026-06-03T17:30:00.000Z",
+    "location" : "indoor",
+    "startDate" : "2026-06-03T17:00:00.000Z",
+    "timeZoneIdentifier" : "Europe/Warsaw"
+  }
+}
