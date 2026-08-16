@@ -16,6 +16,11 @@ struct CommandParsingTests {
         "--output-directory", "output",
       ],
       ["migrate", "fixture.json", "--output", "migrated.json"],
+      ["split", "archive.json", "--output-directory", "output"],
+      ["split", "archive.json", "--output-directory", "output", "--redact", "--seed", "42"],
+      ["schema", "fixture"],
+      ["schema", "archive"],
+      ["schema", "recipe"],
     ])
   func parses(_ arguments: [String]) throws {
     _ = try WorkoutFixtureCommand.parseAsRoot(arguments)

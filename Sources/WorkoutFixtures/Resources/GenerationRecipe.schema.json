@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workoutfixtures.dev/schema/generation-recipe-v1.json",
+  "title": "Generation Recipe",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["transforms"],
+  "properties": {
+    "transforms": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/transform" }
+    }
+  },
+  "$defs": {
+    "transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "shiftDate",
+            "scaleDuration",
+            "scaleMetric",
+            "addNoise",
+            "resample",
+            "translateRoute",
+            "rotateRoute",
+            "jitterRoute",
+            "removeRoute"
+          ]
+        },
+        "metric": { "enum": ["heartRate", "distance", "activeEnergy"] },
+        "integerRange": { "$ref": "#/$defs/integerRange" },
+        "valueRange": { "$ref": "#/$defs/doubleRange" },
+        "standardDeviation": { "type": "number", "exclusiveMinimum": 0 },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "intervalSeconds": { "type": "number", "exclusiveMinimum": 0 },
+        "coordinate": { "$ref": "#/$defs/coordinate" },
+        "degrees": { "type": "number" },
+        "maxMeters": { "type": "number", "minimum": 0 }
+      }
+    },
+    "integerRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lowerBound", "upperBound"],
+      "properties": {
+        "lowerBound": { "type": "integer" },
+        "upperBound": { "type": "integer" }
+      }
+    },
+    "doubleRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lowerBound", "upperBound"],
+      "properties": {
+        "lowerBound": { "type": "number" },
+        "upperBound": { "type": "number" }
+      }
+    },
+    "coordinate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latitude", "longitude"],
+      "properties": {
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180 }
+      }
+    }
+  }
+}
