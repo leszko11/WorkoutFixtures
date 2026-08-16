@@ -331,7 +331,7 @@ public struct TemplateWorkoutGenerator: WorkoutGenerating, Sendable {
   }
 }
 
-private struct SplitMix64: Sendable {
+struct SplitMix64: Sendable {
   private var state: UInt64
 
   init(seed: UInt64) {
@@ -374,7 +374,7 @@ private enum SeedDeriver {
 }
 
 extension WorkoutFixture {
-  fileprivate func shiftingDates(byDays days: Int) throws -> Self {
+  func shiftingDates(byDays days: Int, shiftProvenanceCreatedAt: Bool = true) throws -> Self {
     guard days != 0 else { return self }
     guard let timeZone = TimeZone(identifier: workout.timeZoneIdentifier) else {
       throw GenerationError.dateCalculationFailed
@@ -431,7 +431,7 @@ extension WorkoutFixture {
       },
       provenance: FixtureProvenance(
         kind: provenance.kind,
-        createdAt: try shift(provenance.createdAt),
+        createdAt: shiftProvenanceCreatedAt ? try shift(provenance.createdAt) : provenance.createdAt,
         sourceFixtureID: provenance.sourceFixtureID,
         generatorVersion: provenance.generatorVersion,
         seed: provenance.seed,

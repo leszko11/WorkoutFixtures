@@ -20,6 +20,14 @@
     _ = HealthKitAuthorizationController(healthStore: store)
   }
 
+  @Test("Sample chunking preserves order and covers remainders")
+  func chunkingCoversAllElements() {
+    #expect([Int]().chunked(into: 3).isEmpty)
+    #expect([1, 2, 3, 4, 5, 6].chunked(into: 3) == [[1, 2, 3], [4, 5, 6]])
+    #expect([1, 2, 3, 4, 5].chunked(into: 2) == [[1, 2], [3, 4], [5]])
+    #expect([1, 2].chunked(into: 1) == [[1], [2]])
+  }
+
   @Test("Captured fixtures are normalized to strict fixture invariants")
   func capturedFixturesAreNormalized() {
     let startDate = Date(timeIntervalSinceReferenceDate: 1_000)

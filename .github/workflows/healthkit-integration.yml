@@ -1,28 +1,49 @@
 name: HealthKit Integration
 
+# Runner contract (self-hosted, manual one-time setup):
+# - The runner must have an entitled build identity for dev.workoutfixtures.host.
+# - The simulator used for the run must already have HealthKit authorization
+#   granted to dev.workoutfixtures.host. There is no supported automation for
+#   this (`simctl privacy` has no health service): install and launch the host
+#   app once on the runner's simulator and grant the authorization modal by
+#   hand. Erasing the simulator or reinstalling the app with a new container
+#   requires repeating that step.
+# - The env var below uses the TEST_RUNNER_ prefix so xcodebuild forwards it
+#   (with the prefix stripped) into the simulator test process; a plain shell
+#   env var never reaches the tests and the suite would be silently skipped.
+
 on:
   workflow_dispatch:
 
 jobs:
   healthkit-round-trip:
-    # This runner must have an entitled build identity and a simulator whose
-    # HealthKit authorization has been granted to dev.workoutfixtures.host.
     runs-on: [self-hosted, macOS, healthkit]
+    timeout-minutes: 30
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
-      - name: Verify latest stable Xcode
-        run: |
-          xcodebuild -version
-          test "$(xcodebuild -version | /usr/bin/sed -n '1p')" = "Xcode 26.6"
+      - name: Show Xcode version
+        run: xcodebuild -version
       - name: Run serialized HealthKit round trip
         env:
-          WORKOUT_FIXTURES_HEALTHKIT_INTEGRATION: "1"
+          TEST_RUNNER_WORKOUT_FIXTURES_HEALTHKIT_INTEGRATION: "1"
         run: >-
           xcodebuild test
           -project Examples/WorkoutFixturesHost/WorkoutFixturesHost.xcodeproj
           -scheme WorkoutFixturesHost
           -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
           -only-testing:WorkoutFixturesHostTests/HealthKitIntegrationTests
+          -resultBundlePath TestResults.xcresult
           ONLY_ACTIVE_ARCH=YES
+      - name: Fail when zero tests ran
+        run: |
+          count=$(xcrun xcresulttool get test-results summary --path TestResults.xcresult | /usr/bin/jq '.totalTestCount')
+          echo "Executed test count: $count"
+          test "$count" -gt 0
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: healthkit-integration-results
+          path: TestResults.xcresult

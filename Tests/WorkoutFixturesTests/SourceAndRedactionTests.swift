@@ -71,6 +71,21 @@ struct SourceAndRedactionTests {
     #expect(WorkoutValidator().validate(first).contains { $0.severity == .error } == false)
   }
 
+  @Test("Redacted output does not reveal the seed that shifted its dates")
+  func redactionDoesNotLeakSeed() throws {
+    let captured = try WorkoutFixturePreset.outdoorRun.fixture()
+    let seed: UInt64 = 0xDEAD_BEEF_1234_5678
+    let redacted = try WorkoutRedactor().redact(captured, seed: seed)
+
+    #expect(redacted.provenance.seed == nil)
+
+    let json = try #require(
+      String(data: FixtureJSONCodec().encode(redacted), encoding: .utf8)
+    )
+    #expect(!json.contains(String(seed)))
+    #expect(!json.lowercased().contains(String(seed, radix: 16)))
+  }
+
   @Test("Bundle source loads a fixture")
   func bundleSource() async throws {
     let source = try BundleWorkoutSource(resource: "outdoor-run", subdirectory: "Fixtures")

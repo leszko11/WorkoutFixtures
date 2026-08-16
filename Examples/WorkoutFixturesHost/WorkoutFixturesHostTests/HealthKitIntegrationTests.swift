@@ -25,8 +25,8 @@ struct HealthKitIntegrationTests {
     let fixture = try WorkoutFixturePreset.outdoorRun.fixture()
     let sink = HealthKitWorkoutSink(healthStore: healthStore)
     let stored = try await sink.store(fixture)
-    let externalID = try #require(stored.externalID)
     do {
+      let externalID = try #require(stored.externalID)
       let source = HealthKitWorkoutSource(healthStore: healthStore)
       let captured = try await source.fixture(for: WorkoutID(rawValue: externalID))
       #expect(captured.workout.activity == fixture.workout.activity)
@@ -36,7 +36,11 @@ struct HealthKitIntegrationTests {
       #expect(captured.route?.points.count == fixture.route?.points.count)
       try await sink.delete(externalID: externalID)
     } catch {
-      try? await sink.delete(externalID: externalID)
+      // Best-effort cleanup so a failed run does not leak a workout into the
+      // runner simulator and corrupt subsequent runs.
+      if let externalID = stored.externalID {
+        try? await sink.delete(externalID: externalID)
+      }
       throw error
     }
   }

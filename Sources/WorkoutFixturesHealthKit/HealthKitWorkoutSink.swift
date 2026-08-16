@@ -8,7 +8,6 @@
     case routeBuilderUnavailable
     case finishReturnedNoWorkout
     case finishReturnedNoRoute
-    case cleanupFailed(primary: String, cleanup: String)
 
     public var errorDescription: String? {
       switch self {
@@ -18,16 +17,23 @@
         "HealthKit finished saving but the workout is temporarily unavailable."
       case .finishReturnedNoRoute:
         "HealthKit finished saving but the workout route is temporarily unavailable."
-      case .cleanupFailed(let primary, let cleanup):
-        "Import failed (\(primary)); rollback also failed (\(cleanup))."
       }
+    }
+  }
+
+  public struct HealthKitStoreFailure: Error, Sendable, LocalizedError {
+    public let underlying: any Error
+    public let cleanupError: any Error
+
+    public var errorDescription: String? {
+      "Import failed (\(underlying.localizedDescription)); "
+        + "rollback also failed (\(cleanupError.localizedDescription))."
     }
   }
 
   public actor HealthKitWorkoutSink: WorkoutFixtureSink {
     private let healthStore: HKHealthStore
     private let validator: WorkoutValidator
-    private var activeImports: Set<WorkoutID> = []
 
     public init(
       healthStore: HKHealthStore,
@@ -50,75 +56,82 @@
         device: nil
       )
       let samples = makeSamples(from: fixture)
-      activeImports.insert(fixture.id)
-      defer { activeImports.remove(fixture.id) }
       var routeBuilder: HKWorkoutRouteBuilder?
       var savedWorkout: HKWorkout?
 
-      return try await withTaskCancellationHandler {
-        do {
-          try await builder.beginCollection(at: fixture.workout.startDate)
-          for chunk in samples.chunked(into: 500) {
-            try Task.checkCancellation()
-            try await builder.addSamples(chunk)
-          }
-          let events = fixture.events.map(\.healthKitEvent)
-          if !events.isEmpty {
-            try await builder.addWorkoutEvents(events)
-          }
-          if let route = fixture.route, !route.points.isEmpty {
-            guard
-              let builder = builder.seriesBuilder(for: HealthKitTypes.route)
-                as? HKWorkoutRouteBuilder
-            else {
-              throw HealthKitImportError.routeBuilderUnavailable
-            }
-            routeBuilder = builder
-            for chunk in route.points.map(\.location).chunked(into: 100) {
-              try Task.checkCancellation()
-              try await builder.insertRouteData(chunk)
-            }
-          }
+      // Cancellation is cooperative only: every builder call happens inside this
+      // actor-isolated method, and a thrown CancellationError reaches the single
+      // rollback path below. An onCancel handler would race in-flight builder calls.
+      do {
+        try await builder.beginCollection(at: fixture.workout.startDate)
+        for chunk in samples.chunked(into: 500) {
           try Task.checkCancellation()
-          try await builder.endCollection(at: fixture.workout.endDate)
-          let workout = try await finish(builder)
-          savedWorkout = workout
-          try Task.checkCancellation()
-          if let routeBuilder {
-            guard let workout else {
-              throw HealthKitImportError.finishReturnedNoWorkout
-            }
-            guard try await finish(routeBuilder, with: workout) != nil else {
-              throw HealthKitImportError.finishReturnedNoRoute
-            }
-            try Task.checkCancellation()
-          }
-          return StoredWorkout(
-            fixtureID: fixture.id,
-            externalID: workout?.uuid.uuidString,
-            storedAt: fixture.workout.endDate,
-            status: workout == nil ? .savedUnavailable : .available
-          )
-        } catch {
-          builder.discardWorkout()
-          routeBuilder?.discard()
-          do {
-            if let savedWorkout {
-              try await healthStore.delete(savedWorkout)
-            }
-            if savedWorkout != nil, !samples.isEmpty {
-              try await healthStore.delete(samples)
-            }
-          } catch let cleanupError {
-            throw HealthKitImportError.cleanupFailed(
-              primary: String(describing: error),
-              cleanup: String(describing: cleanupError)
-            )
-          }
-          throw error
+          try await builder.addSamples(chunk)
         }
-      } onCancel: {
-        builder.discardWorkout()
+        let events = fixture.events.map(\.healthKitEvent)
+        if !events.isEmpty {
+          try await builder.addWorkoutEvents(events)
+        }
+        if let route = fixture.route, !route.points.isEmpty {
+          guard
+            let builder = builder.seriesBuilder(for: HealthKitTypes.route)
+              as? HKWorkoutRouteBuilder
+          else {
+            throw HealthKitImportError.routeBuilderUnavailable
+          }
+          routeBuilder = builder
+          for chunk in route.points.map(\.location).chunked(into: 100) {
+            try Task.checkCancellation()
+            try await builder.insertRouteData(chunk)
+          }
+        }
+        try Task.checkCancellation()
+        try await builder.endCollection(at: fixture.workout.endDate)
+        let workout = try await finish(builder)
+        savedWorkout = workout
+        try Task.checkCancellation()
+        if let activeRouteBuilder = routeBuilder {
+          guard let workout else {
+            throw HealthKitImportError.finishReturnedNoWorkout
+          }
+          guard try await finish(activeRouteBuilder, with: workout) != nil else {
+            throw HealthKitImportError.finishReturnedNoRoute
+          }
+          routeBuilder = nil
+          try Task.checkCancellation()
+        }
+        return StoredWorkout(
+          fixtureID: fixture.id,
+          externalID: workout?.uuid.uuidString,
+          storedAt: fixture.workout.endDate,
+          status: workout == nil ? .savedUnavailable : .available
+        )
+      } catch {
+        routeBuilder?.discard()
+        if let savedWorkout {
+          // The workout is already persisted; the builder must not be discarded
+          // after a successful finish. Remove children before the parent, and
+          // attempt the parent even if the children fail.
+          var cleanupFailure: (any Error)?
+          if !samples.isEmpty {
+            do {
+              try await healthStore.delete(samples)
+            } catch let deleteError {
+              cleanupFailure = deleteError
+            }
+          }
+          do {
+            try await healthStore.delete(savedWorkout)
+          } catch let deleteError {
+            cleanupFailure = cleanupFailure ?? deleteError
+          }
+          if let cleanupFailure {
+            throw HealthKitStoreFailure(underlying: error, cleanupError: cleanupFailure)
+          }
+        } else {
+          builder.discardWorkout()
+        }
+        throw error
       }
     }
 
@@ -216,7 +229,7 @@
   }
 
   extension Array {
-    fileprivate func chunked(into size: Int) -> [[Element]] {
+    func chunked(into size: Int) -> [[Element]] {
       stride(from: 0, to: count, by: size).map {
         Array(self[$0..<Swift.min($0 + size, count)])
       }

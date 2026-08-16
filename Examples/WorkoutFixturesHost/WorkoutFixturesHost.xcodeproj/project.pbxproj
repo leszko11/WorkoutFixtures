@@ -324,7 +324,6 @@
 				CODE_SIGN_ENTITLEMENTS = WorkoutFixturesHost/WorkoutFixturesHost.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = SATYASXVS5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WorkoutFixturesHost/Info.plist;
@@ -352,7 +351,6 @@
 				CODE_SIGN_ENTITLEMENTS = WorkoutFixturesHost/WorkoutFixturesHost.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = SATYASXVS5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WorkoutFixturesHost/Info.plist;

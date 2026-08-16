@@ -40,7 +40,12 @@ public struct WorkoutValidator: Sendable {
 
   public func validate(_ fixture: WorkoutFixture) -> [ValidationIssue] {
     var issues: [ValidationIssue] = []
-    let bounds = fixture.workout.startDate...fixture.workout.endDate
+    // A reversed workout is reported via workout.invalidBounds below; forming the
+    // range unconditionally would trap, so containment checks are skipped instead.
+    let bounds: ClosedRange<Date>? =
+      fixture.workout.startDate <= fixture.workout.endDate
+      ? fixture.workout.startDate...fixture.workout.endDate
+      : nil
 
     if fixture.schemaVersion != .current {
       issues.append(
@@ -110,7 +115,7 @@ public struct WorkoutValidator: Sendable {
           issues.append(
             .error("sample.invalidBounds", path, "Sample startDate must not follow endDate."))
         }
-        if !bounds.contains(sample.startDate) || !bounds.contains(sample.endDate) {
+        if let bounds, !bounds.contains(sample.startDate) || !bounds.contains(sample.endDate) {
           issues.append(.error("sample.outOfBounds", path, "Sample must be inside workout bounds."))
         }
         if let priorEnd, sample.startDate < priorEnd {
@@ -154,7 +159,7 @@ public struct WorkoutValidator: Sendable {
         issues.append(
           .error("event.invalidBounds", path, "Event startDate must not follow endDate."))
       }
-      if !bounds.contains(event.startDate) || !bounds.contains(event.endDate) {
+      if let bounds, !bounds.contains(event.startDate) || !bounds.contains(event.endDate) {
         issues.append(.error("event.outOfBounds", path, "Event must be inside workout bounds."))
       }
       switch event.kind {
@@ -188,7 +193,7 @@ public struct WorkoutValidator: Sendable {
               "route.invalidLongitude", "\(path).longitude",
               "Longitude must be between -180 and 180."))
         }
-        if !bounds.contains(point.date) {
+        if let bounds, !bounds.contains(point.date) {
           issues.append(
             .error(
               "route.outOfBounds", "\(path).date", "Route point must be inside workout bounds."))

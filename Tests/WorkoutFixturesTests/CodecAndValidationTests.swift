@@ -114,6 +114,27 @@ struct CodecAndValidationTests {
     }
   }
 
+  @Test("Reversed or empty workout bounds are reported, not trapped", arguments: [-60.0, 0.0])
+  func invalidBoundsProduceError(_ endOffset: Double) throws {
+    let template = try WorkoutFixturePreset.outdoorRun.fixture()
+    let fixture = WorkoutFixture(
+      id: template.id,
+      workout: WorkoutDescriptor(
+        activity: template.workout.activity,
+        location: template.workout.location,
+        startDate: template.workout.startDate,
+        endDate: template.workout.startDate.addingTimeInterval(endOffset),
+        timeZoneIdentifier: template.workout.timeZoneIdentifier
+      ),
+      series: template.series,
+      events: template.events,
+      route: template.route,
+      provenance: template.provenance
+    )
+    let issues = WorkoutValidator().validate(fixture)
+    #expect(issues.contains { $0.code == "workout.invalidBounds" })
+  }
+
   @Test("Validation reports incompatible units and out-of-bounds samples")
   func validationReportsStablePaths() throws {
     let template = try WorkoutFixturePreset.outdoorRun.fixture()
