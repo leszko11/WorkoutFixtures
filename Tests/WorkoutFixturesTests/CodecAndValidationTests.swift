@@ -163,8 +163,6 @@ struct CodecAndValidationTests {
   }
 }
 
-private func assertSendable<T: Sendable>(_: T.Type) {}
-
 @Test("Public concurrency values are Sendable")
 func publicTypesAreSendable() {
   assertSendable(WorkoutFixture.self)

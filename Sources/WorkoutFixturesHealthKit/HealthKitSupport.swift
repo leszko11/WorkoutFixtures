@@ -9,7 +9,13 @@
     case readWrite
   }
 
-  public struct HealthKitAuthorizationController: Sendable {
+  /// Explicit authorization boundary, injectable so app code that requests
+  /// authorization stays testable without a real `HKHealthStore`.
+  public protocol HealthAuthorizing: Sendable {
+    func requestAuthorization(for access: HealthKitWorkoutAccess) async throws
+  }
+
+  public struct HealthKitAuthorizationController: HealthAuthorizing, Sendable {
     private let healthStore: HKHealthStore
 
     public init(healthStore: HKHealthStore) {

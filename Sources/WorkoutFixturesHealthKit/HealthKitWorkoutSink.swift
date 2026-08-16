@@ -31,7 +31,7 @@
     }
   }
 
-  public actor HealthKitWorkoutSink: WorkoutFixtureSink {
+  public actor HealthKitWorkoutSink: WorkoutFixtureSink, WorkoutFixtureDeleting {
     private let healthStore: HKHealthStore
     private let validator: WorkoutValidator
 

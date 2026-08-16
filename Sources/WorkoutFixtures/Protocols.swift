@@ -9,6 +9,14 @@ public protocol WorkoutFixtureSink: Sendable {
   func store(_ fixture: WorkoutFixture) async throws -> StoredWorkout
 }
 
+public protocol WorkoutFixtureDeleting: Sendable {
+  func delete(externalID: String) async throws
+}
+
+/// The full read/write/delete surface an app usually injects as one dependency.
+public typealias WorkoutFixtureStore = WorkoutFixtureSource & WorkoutFixtureSink
+  & WorkoutFixtureDeleting
+
 public protocol WorkoutGenerating: Sendable {
   @concurrent
   func generate(

@@ -1,15 +1,70 @@
 #if canImport(HealthKit)
+  import Foundation
   import HealthKit
   import Testing
   import WorkoutFixtures
+  import WorkoutFixturesTestSupport
+
   @testable import WorkoutFixturesHealthKit
 
   @Test("HealthKit adapters satisfy Sendable public boundaries")
   func adaptersAreSendable() {
-    func assertSendable<T: Sendable>(_: T.Type) {}
     assertSendable(HealthKitWorkoutSource.self)
     assertSendable(HealthKitWorkoutSink.self)
     assertSendable(HealthKitAuthorizationController.self)
+  }
+
+  @Suite("Workout store factory")
+  struct WorkoutStoreFactoryTests {
+    @Test("Live and unconfigured launches return the HealthKit adapters")
+    func liveReturnsHealthKitAdapters() throws {
+      for configuration in [nil, FixtureLaunchConfiguration(mode: .live)] {
+        let stores = try WorkoutStoreFactory.make(
+          healthStore: HKHealthStore(),
+          configuration: configuration
+        )
+        #expect(stores.source is HealthKitWorkoutSource)
+        #expect(stores.sink is HealthKitWorkoutSink)
+      }
+    }
+
+    @Test("Preset mode returns a fixture-backed store without touching HealthKit")
+    func presetModeUsesFixtures() async throws {
+      let stores = try WorkoutStoreFactory.make(
+        configuration: FixtureLaunchConfiguration(mode: .presets),
+        presetFixtures: WorkoutFixturePreset.allFixtures
+      )
+      let summaries = try await stores.source.summaries(matching: WorkoutQuery())
+      #expect(summaries.count == WorkoutFixturePreset.allCases.count)
+
+      let fixture = try WorkoutFixturePreset.outdoorRun.fixture()
+      let stored = try await stores.sink.store(fixture)
+      #expect(stored.status == .available)
+      try await stores.sink.delete(externalID: fixture.id.rawValue)
+    }
+
+    @Test("Preset mode without a provider is a typed error")
+    func presetModeWithoutProviderThrows() {
+      #expect(throws: WorkoutStoreFactoryError.presetFixturesUnavailable) {
+        _ = try WorkoutStoreFactory.make(
+          configuration: FixtureLaunchConfiguration(mode: .presets)
+        )
+      }
+    }
+
+    @Test("JSON mode loads a fixture file from disk")
+    func jsonModeLoadsFile() async throws {
+      let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("factory-\(UUID().uuidString).json")
+      defer { try? FileManager.default.removeItem(at: url) }
+      let fixture = try WorkoutFixturePreset.outdoorRun.fixture()
+      try FixtureJSONCodec().encode(fixture).write(to: url, options: .atomic)
+
+      let stores = try WorkoutStoreFactory.make(
+        configuration: FixtureLaunchConfiguration(mode: .json(url))
+      )
+      #expect(try await stores.source.fixture(for: fixture.id) == fixture)
+    }
   }
 
   @Test("HealthKit adapters initialize without requesting authorization")

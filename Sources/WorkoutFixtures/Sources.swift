@@ -1,5 +1,32 @@
 import Foundation
 
+extension WorkoutQuery {
+  /// Applies this query's filters, sort, and limit to in-memory fixtures.
+  /// Custom `WorkoutFixtureSource` implementations can reuse this so every
+  /// portable source answers queries identically.
+  public func apply(to fixtures: some Collection<WorkoutFixture>) -> [WorkoutSummary] {
+    let summaries = fixtures.lazy
+      .filter { activities.isEmpty || activities.contains($0.workout.activity) }
+      .filter { fixture in
+        startDate.map { $0 <= fixture.workout.endDate } ?? true
+      }
+      .filter { fixture in
+        endDate.map { $0 >= fixture.workout.startDate } ?? true
+      }
+      .map(\.summary)
+      .sorted {
+        switch sort {
+        case .startDateAscending: $0.startDate < $1.startDate
+        case .startDateDescending: $0.startDate > $1.startDate
+        }
+      }
+    if let limit {
+      return Array(summaries.prefix(max(0, limit)))
+    }
+    return summaries
+  }
+}
+
 public struct InMemoryWorkoutSource: WorkoutFixtureSource, Sendable {
   private let fixturesByID: [WorkoutID: WorkoutFixture]
 
@@ -8,26 +35,13 @@ public struct InMemoryWorkoutSource: WorkoutFixtureSource, Sendable {
       fixtures.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
   }
 
+  /// All fixtures held by this source, ordered by start date.
+  public var fixtures: [WorkoutFixture] {
+    fixturesByID.values.sorted { $0.workout.startDate < $1.workout.startDate }
+  }
+
   public func summaries(matching query: WorkoutQuery) async throws -> [WorkoutSummary] {
-    let summaries = fixturesByID.values.lazy
-      .filter { query.activities.isEmpty || query.activities.contains($0.workout.activity) }
-      .filter { fixture in
-        query.startDate.map { $0 <= fixture.workout.endDate } ?? true
-      }
-      .filter { fixture in
-        query.endDate.map { $0 >= fixture.workout.startDate } ?? true
-      }
-      .map(\.summary)
-      .sorted {
-        switch query.sort {
-        case .startDateAscending: $0.startDate < $1.startDate
-        case .startDateDescending: $0.startDate > $1.startDate
-        }
-      }
-    if let limit = query.limit {
-      return Array(summaries.prefix(max(0, limit)))
-    }
-    return summaries
+    query.apply(to: fixturesByID.values)
   }
 
   public func fixture(for id: WorkoutID) async throws -> WorkoutFixture {
@@ -87,6 +101,11 @@ public struct JSONWorkoutSource: WorkoutFixtureSource, Sendable {
       throw CocoaError(.fileNoSuchFile)
     }
     try self.init(url: url, fixtureCodec: fixtureCodec, archiveCodec: archiveCodec)
+  }
+
+  /// All fixtures decoded from the JSON input, ordered by start date.
+  public var fixtures: [WorkoutFixture] {
+    source.fixtures
   }
 
   public func summaries(matching query: WorkoutQuery) async throws -> [WorkoutSummary] {
