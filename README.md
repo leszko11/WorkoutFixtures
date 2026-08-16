@@ -3,7 +3,12 @@
 WorkoutFixtures is a Swift Concurrency-first toolkit for capturing, sanitizing,
 generating, and replaying portable workout fixtures. It deliberately models the
 workout data—not `HKHealthStore`—so the same fixture works in unit tests,
-SwiftUI previews, command-line tools, Linux CI, and HealthKit integration tests.
+SwiftUI previews, command-line tools, Linux CI, and HealthKit integration
+tests.
+
+Full documentation lives in the DocC catalog (`xcodebuild docbuild` or Xcode's
+**Product → Build Documentation**), starting with the *Installation and Usage*
+article. Agent-facing conventions live in [AGENTS.md](AGENTS.md).
 
 ## Requirements
 
@@ -13,20 +18,21 @@ SwiftUI previews, command-line tools, Linux CI, and HealthKit integration tests.
 
 The package uses Swift 6 language mode, complete concurrency checking,
 nonisolated default isolation, and caller-isolated async functions. All public
-models are immutable `Sendable` values. UI state in the example host app is the
-only code isolated to `@MainActor`.
+models are immutable `Sendable` values. UI state is isolated to `@MainActor`
+only in `WorkoutFixturesDebugUI` and the example host app.
 
 ## Products
 
 | Product | Purpose |
 | --- | --- |
-| `WorkoutFixtures` | Models, strict JSON codec/schema, validation, redaction, generation, and in-memory/JSON sources |
-| `WorkoutFixturesHealthKit` | Explicit authorization plus HealthKit capture and replay adapters |
-| `WorkoutFixturesTestSupport` | Deterministic run, walk, and cycling presets plus bundle loading |
-| `workout-fixture` | Inspect, validate, redact, migrate, and generate fixtures |
+| `WorkoutFixtures` | Models, strict JSON codecs/schemas, validation, redaction, generation, GPX import, in-memory/JSON sources, launch configuration |
+| `WorkoutFixturesHealthKit` | Explicit authorization, HealthKit capture and replay adapters, `WorkoutStoreFactory` |
+| `WorkoutFixturesTestSupport` | Deterministic presets, bundle loading, and test doubles (`InMemoryWorkoutStore`, `RecordingWorkoutSink`, `FailingWorkoutSource`) |
+| `WorkoutFixturesDebugUI` | Embeddable SwiftUI debug panel: capture, export, import, and replay fixtures from any HealthKit-entitled app |
+| `workout-fixture` | Inspect, validate, split, redact, migrate, generate, and import GPX fixtures |
 
-Swift Argument Parser is linked only by the CLI. The three library products have
-no external dependencies.
+Swift Argument Parser is linked only by the CLI. The library products have no
+external dependencies.
 
 ## Package usage
 
@@ -67,6 +73,39 @@ let generated = try await TemplateWorkoutGenerator().generate(
 )
 ```
 
+Create a fixture from a GPX track (route, derived distance series, and heart
+rate from `gpxtpx` extensions):
+
+```swift
+let fixture = try GPXWorkoutImporter().fixture(contentsOf: gpxURL)
+```
+
+## Injecting mocked workouts into a running app
+
+Apps depend on the protocols (`WorkoutFixtureSource`, `WorkoutFixtureSink`,
+`WorkoutFixtureDeleting`) and build their stores once through the factory:
+
+```swift
+import WorkoutFixturesHealthKit
+
+let (source, sink) = try WorkoutStoreFactory.make(
+    presetFixtures: WorkoutFixturePreset.allFixtures
+)
+```
+
+By default the factory returns the real HealthKit adapters. When the process
+is launched with a fixture mode, it returns fixture-backed stores instead — so
+UI tests and Debug builds inject mock workouts with zero app-code changes:
+
+```swift
+let app = XCUIApplication()
+app.launchEnvironment["WORKOUT_FIXTURES_MODE"] = "presets"
+app.launch()
+```
+
+Supported modes: `live`, `presets`, `json` (+ `WORKOUT_FIXTURES_PATH`), and
+`resource` (+ `WORKOUT_FIXTURES_RESOURCE`).
+
 ## HealthKit
 
 HealthKit authorization is always explicit; reading or writing never presents
@@ -87,92 +126,78 @@ let fixture = try await source.fixture(for: workoutID)
 let stored = try await sink.store(fixture)
 ```
 
-The source uses HealthKit async query descriptors. The sink is an actor that
-serializes builder state, checks cancellation between bounded sample/route
-chunks, discards unfinished builders, and attempts to remove already-persisted
-samples if an import fails.
+The source pushes the query's date window, activities, sort, and limit into
+HealthKit and reads each workout's own time zone from its metadata. The sink is
+an actor that writes bounded sample/route chunks with cooperative cancellation,
+stamps time-zone and indoor metadata for faithful round trips, and rolls back
+already-persisted samples (children before the parent workout) if an import
+fails — preserving the original error.
 
-The entitled SwiftUI host app is at
-`Examples/WorkoutFixturesHost/WorkoutFixturesHost.xcodeproj`. It can:
+## Embedding the exporter in your own app
 
-- authorize and list HealthKit workouts;
-- capture and validate portable fixtures;
-- import fixture files through the system document picker;
-- export shareable, redacted fixtures;
-- export full fixtures only after a privacy confirmation;
-- replay fixtures into simulator HealthKit;
-- delete the last workout it imported.
+Any app that already holds the HealthKit entitlement can embed the debug panel
+and skip the standalone host app entirely:
+
+```swift
+import WorkoutFixturesDebugUI
+
+#if DEBUG
+    WorkoutFixtureDebugView(model: WorkoutFixtureDebugModel())
+#endif
+```
+
+Requirements for the hosting app: the HealthKit capability plus
+`NSHealthShareUsageDescription`/`NSHealthUpdateUsageDescription`. The panel
+lists and captures workouts, exports shareable (redacted) or full fixtures and
+one-file archives, imports fixture files, replays fixtures into HealthKit, and
+deletes the workouts it imported.
+
+The entitled reference integration is
+`Examples/WorkoutFixturesHost/WorkoutFixturesHost.xcodeproj` — a thin shell
+around the same panel, kept as the runnable target for UI and integration
+tests.
 
 ### Physical device to a mock source
 
-On the physical device:
+1. On the device, run an app embedding the debug panel (or the host app —
+   select your own development team locally; the repository intentionally
+   contains no team identifier, and CI enforces that).
+2. Tap **Export All Workouts for Mocking**, confirm the privacy warning, and
+   save `workout-fixtures-archive.json` to iCloud Drive or AirDrop it to your
+   Mac.
+3. Optionally fan the archive out into per-test fixtures:
 
-1. Open `WorkoutFixturesHost.xcodeproj`, select the host scheme and your device,
-   and choose your own development team locally. The repository intentionally
-   contains no team identifier; do not commit Xcode's signing change.
-2. Run the host and tap **Export All Workouts for Mocking**. This action requests
-   read authorization itself; **Authorize and Refresh** is only needed to browse
-   or export one selected workout.
-3. Confirm the privacy warning and save `workout-fixtures-archive.json` to iCloud
-   Drive or AirDrop it to your Mac. It contains every supported running, walking,
-   and cycling workout, including associated metric samples, events, and routes.
+   ```console
+   workout-fixture split workout-fixtures-archive.json --output-directory Fixtures
+   ```
 
-Add that one file as a resource of a test-support target or a Debug-only app
-target, then load it directly without HealthKit authorization or a Simulator
-host:
+4. Add the archive (or split fixtures) to a test-support target and load it
+   without HealthKit or a simulator host:
 
-```swift
-import WorkoutFixtures
+   ```swift
+   let source: any WorkoutFixtureSource = try JSONWorkoutSource(
+       bundle: .main,
+       resource: "workout-fixtures-archive"
+   )
+   ```
 
-let source: any WorkoutFixtureSource = try JSONWorkoutSource(
-    bundle: .main,
-    resource: "workout-fixtures-archive"
-)
-
-let workouts = try await source.summaries(matching: WorkoutQuery())
-let workout = try await source.fixture(for: workouts[0].id)
-```
-
-Use `bundle: .module` when the archive is a SwiftPM target resource. The same
-`JSONWorkoutSource` also accepts the original single-workout fixture files, so
-call sites do not need separate archive and fixture code paths. Do not include a
-private device archive in a production application bundle.
+Use `bundle: .module` when the archive is a SwiftPM target resource.
+`JSONWorkoutSource` accepts both archives and single-fixture files. Do not
+include a private device archive in a production application bundle.
 
 ### Optional replay into Simulator HealthKit
 
 Most tests and previews should inject `WorkoutFixtureSource` and stop there. If
-the code under test must exercise the real `HKHealthStore` adapter, the host can
-still replay an individual fixture:
+the code under test must exercise the real `HKHealthStore` adapter, run the
+host (or your embedding app) on a booted simulator, import a fixture file via
+**Import Fixture File** (or copy it into the app's Documents directory with
+`xcrun simctl get_app_container booted dev.workoutfixtures.host data`), then
+tap **Authorize and Refresh** and **Write Fixture to HealthKit**. Use **Remove
+Last Imported Workout** when finished.
 
-1. Build and run the same host app on a booted iOS Simulator.
-2. Export one full fixture on the device. If it is in iCloud Drive, tap **Import
-   Fixture File** and select it.
-   To transfer a file from the Mac without iCloud, first install the host and
-   then copy it into the app's Simulator Documents directory:
-
-   ```console
-   APP_DATA="$(xcrun simctl get_app_container booted dev.workoutfixtures.host data)"
-   cp "/path/to/workout.json" "$APP_DATA/Documents/"
-   ```
-
-   If more than one Simulator is booted, replace `booted` with the destination
-   Simulator's UDID from `xcrun simctl list devices booted`.
-
-   In the picker, choose **On My iPhone → Workout Fixtures**.
-3. Confirm that validation reports zero errors, tap **Authorize and Refresh**,
-   and then tap **Write Fixture to HealthKit**.
-4. Inspect the workout in the Simulator's Health app. Use **Remove Last
-   Imported Workout** when you are finished.
-
-Treat every full fixture or archive as private development data. **Export
-Shareable Copy** changes dates and identifiers and removes the GPS route and
-captured source metadata from a selected fixture.
-
-The SPM package cannot install a replacement system `HKHealthStore`. Direct
-archive loading requires the application to inject `WorkoutFixtureSource` (or
-adapt it to the application's own health-data protocol). That boundary is what
-makes the same mock work in unit tests, previews, Simulator builds, macOS tools,
-and Linux CI.
+The SPM package cannot install a replacement system `HKHealthStore`. Injecting
+`WorkoutFixtureSource` at the app boundary is what makes the same mock work in
+unit tests, previews, simulator builds, macOS tools, and Linux CI.
 
 ## Privacy
 
@@ -185,47 +210,68 @@ source metadata:
 let shareable = try WorkoutRedactor().redact(captured, seed: 42)
 ```
 
-Treat raw fixtures as sensitive health data. Generated or simulator-imported
-samples are attributed to the importing application, not the original device.
+Redacted output never contains the seed, and the regenerated identifier is a
+one-way mix of the seed and the discarded original identifier, so holders of a
+shareable fixture cannot reverse the date shift. Treat raw fixtures as
+sensitive health data. Generated or simulator-imported samples are attributed
+to the importing application, not the original device.
 
 ## CLI
 
 ```console
-swift run workout-fixture inspect fixture.json
-swift run workout-fixture validate fixture.json --diagnostics-format json
-swift run workout-fixture redact fixture.json --output safe.json --seed 42
+swift run workout-fixture inspect fixture-or-archive.json [--json]
+swift run workout-fixture validate fixture-or-archive.json --diagnostics-format json
+swift run workout-fixture split archive.json --output-directory Fixtures [--redact --seed 42]
+swift run workout-fixture redact fixture.json --output safe.json --seed 42 \
+  [--preserve-route] [--preserve-source]
 swift run workout-fixture generate fixture.json \
   --recipe Examples/focused-recipe.json \
   --count 10 --seed 42 --output-directory Generated
 swift run workout-fixture migrate fixture.json --output canonical.json
+swift run workout-fixture import-gpx track.gpx --output imported.json \
+  [--activity running] [--location outdoor] [--time-zone UTC] [--no-distance-series]
+swift run workout-fixture schema fixture|archive|recipe
 ```
 
-Diagnostics go to stderr; requested payloads go to stdout. Files are written
-atomically. Exit status `64` represents invalid CLI usage and `1` represents
-validation or operational failure.
+Payloads and confirmations go to stdout; diagnostics go to stderr
+(`--diagnostics-format json` emits NDJSON — one
+`{"severity","code","path","message"}` object per line). Files are written
+atomically; filenames derived from fixture IDs are sanitized. Exit status `64`
+is invalid usage and `1` is a validation or operational failure — both are
+asserted by tests.
 
 ## Schema and validation
 
-Schema v1 uses ISO-8601 UTC timestamps and the canonical units `count/min`, `m`,
-and `kcal`. The bundled JSON Schema is Draft 2020-12. Decoding rejects future
-versions and unknown fields by default; `.ignore` is an explicit recovery mode.
+Schema v1 uses ISO-8601 UTC timestamps and the canonical units `count/min`,
+`m`, and `kcal`. Draft 2020-12 JSON Schemas for fixtures, archives, and
+generation recipes ship in the module (`workout-fixture schema …` prints
+them). Decoding rejects future versions and unknown fields by default;
+`.ignore` is an explicit recovery mode. Recipes are decoded strictly too — a
+typo'd key is an error, never silently dropped.
 
 Samples are canonical. Summaries such as total distance, active energy, and
-average heart rate are derived so stored totals cannot disagree with timelines.
-Validation returns stable issue codes and JSON paths. Errors block generation
-and HealthKit writes; warnings preserve unusual but representable data.
+average heart rate are derived so stored totals cannot disagree with
+timelines. Validation returns stable issue codes and JSON paths. Errors block
+generation and HealthKit writes; warnings preserve unusual but representable
+data.
 
 ## Testing
 
 ```console
-swift test
+make test        # portable package tests
+make test-host   # host app unit + UI tests on a simulator
+make lint        # swift-format lint (matches CI)
+make smoke       # CLI generate → validate → inspect round trip
 ```
 
-Package suites use Swift Testing and run safely in parallel. The host project
-contains a Swift Testing suite and XCUITest coverage. Its real HealthKit
-round-trip suite is serialized, tagged `healthKitIntegration`, and disabled
-unless `WORKOUT_FIXTURES_HEALTHKIT_INTEGRATION=1` is set on an entitled,
-pre-authorized simulator runner.
+Package suites use Swift Testing and run safely in parallel.
+`WorkoutFixturesTestSupport` ships the doubles the host tests use — no
+`HKHealthStore` is constructed in unit tests. The real HealthKit round-trip
+suite is serialized, tagged `healthKitIntegration`, and disabled unless
+`WORKOUT_FIXTURES_HEALTHKIT_INTEGRATION=1` reaches the simulator test process
+(CI passes it as `TEST_RUNNER_WORKOUT_FIXTURES_HEALTHKIT_INTEGRATION`); the
+runner's simulator must be pre-authorized by hand once — there is no supported
+automation for the HealthKit permission modal.
 
 ## License
 
