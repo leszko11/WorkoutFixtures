@@ -41,6 +41,15 @@
     var body: some View {
       List {
         Section {
+          Button("Select All", action: selectAll)
+            .disabled(model.exportFilter.activities.count == Self.allActivities.count)
+            .accessibilityIdentifier("selectAllActivities")
+          Button("Deselect All", action: deselectAll)
+            .disabled(model.exportFilter.activities.isEmpty)
+            .accessibilityIdentifier("deselectAllActivities")
+        }
+
+        Section {
           ForEach(visibleActivities, id: \.self) { activity in
             ActivityRow(
               activity: activity,
@@ -54,12 +63,6 @@
       }
       .searchable(text: $searchText, prompt: "Search activities")
       .navigationTitle(navigationTitle)
-      .toolbar {
-        if !model.exportFilter.activities.isEmpty {
-          Button("Clear", action: clearSelection)
-            .accessibilityIdentifier("clearActivities")
-        }
-      }
     }
 
     private var navigationTitle: String {
@@ -75,7 +78,11 @@
       }
     }
 
-    private func clearSelection() {
+    private func selectAll() {
+      model.exportFilter.activities = Set(Self.allActivities)
+    }
+
+    private func deselectAll() {
       model.exportFilter.activities = []
     }
   }
