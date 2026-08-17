@@ -8,6 +8,13 @@ has not yet tagged a release.
 
 ### Added
 
+- `WorkoutActivity` now covers every non-deprecated `HKWorkoutActivityType`
+  (81 activities, previously running/walking/cycling only). The fixture JSON
+  schema's activity enum is generated from the Swift cases and a test asserts
+  parity; the HealthKit bridge is bijective and distance samples map to the
+  activity-appropriate quantity type (cycling, swimming, wheelchair, downhill
+  snow sports, or walking/running). The debug panel picks activities on a
+  searchable multi-select screen.
 - `WorkoutFixturesDebugUI` product: embeddable `WorkoutFixtureDebugView` /
   `WorkoutFixtureDebugModel` capture-export-import-replay panel for any
   HealthKit-entitled app. The example host app is now a thin shell around it.

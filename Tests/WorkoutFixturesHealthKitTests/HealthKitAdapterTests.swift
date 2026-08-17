@@ -166,6 +166,28 @@
     }
   }
 
+  @Test(
+    "Every fixture activity round-trips through its HealthKit type",
+    arguments: WorkoutActivity.allCases)
+  func activityBridgeIsBijective(_ activity: WorkoutActivity) {
+    #expect(activity.healthKitType.fixtureActivity == activity)
+  }
+
+  @Test("Distance samples map to the activity-appropriate HealthKit type")
+  func distanceTypeMapping() {
+    #expect(HealthKitTypes.distanceType(for: .running) == HealthKitTypes.walkingRunningDistance)
+    #expect(HealthKitTypes.distanceType(for: .hiking) == HealthKitTypes.walkingRunningDistance)
+    #expect(HealthKitTypes.distanceType(for: .cycling) == HealthKitTypes.cyclingDistance)
+    #expect(HealthKitTypes.distanceType(for: .handCycling) == HealthKitTypes.cyclingDistance)
+    #expect(HealthKitTypes.distanceType(for: .swimming) == HealthKitTypes.swimmingDistance)
+    #expect(
+      HealthKitTypes.distanceType(for: .wheelchairRunPace) == HealthKitTypes.wheelchairDistance)
+    #expect(
+      HealthKitTypes.distanceType(for: .snowboarding)
+        == HealthKitTypes.downhillSnowSportsDistance)
+    #expect(HealthKitTypes.distanceType(for: .yoga) == HealthKitTypes.walkingRunningDistance)
+  }
+
   @Test("Sample chunking preserves order and covers remainders")
   func chunkingCoversAllElements() {
     #expect([Int]().chunked(into: 3).isEmpty)

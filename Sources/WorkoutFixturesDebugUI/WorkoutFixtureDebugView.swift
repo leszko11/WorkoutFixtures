@@ -202,14 +202,14 @@
     var body: some View {
       Form {
         Section {
-          ForEach(WorkoutActivity.allCases, id: \.self) { activity in
-            Toggle(activity.rawValue.capitalized, isOn: activityBinding(activity))
-              .accessibilityIdentifier("filterActivity-\(activity.rawValue)")
+          NavigationLink {
+            ActivityFilterView(model: model)
+          } label: {
+            LabeledContent("Activities", value: activitiesSummary)
           }
-        } header: {
-          Text("Activities")
+          .accessibilityIdentifier("filterActivities")
         } footer: {
-          Text("With nothing selected, every supported activity is included.")
+          Text("With nothing selected, every activity is included.")
         }
 
         Section("Date") {
@@ -263,17 +263,16 @@
       #endif
     }
 
-    private func activityBinding(_ activity: WorkoutActivity) -> Binding<Bool> {
-      Binding(
-        get: { model.exportFilter.activities.contains(activity) },
-        set: { isIncluded in
-          if isIncluded {
-            model.exportFilter.activities.insert(activity)
-          } else {
-            model.exportFilter.activities.remove(activity)
-          }
-        }
-      )
+    private var activitiesSummary: String {
+      let selected = model.exportFilter.activities
+      switch selected.count {
+      case 0:
+        return "All"
+      case 1, 2:
+        return selected.map(\.displayName).sorted().joined(separator: ", ")
+      default:
+        return "\(selected.count) selected"
+      }
     }
 
     // Zero-backed bindings for the optional thresholds: 0 in the field means

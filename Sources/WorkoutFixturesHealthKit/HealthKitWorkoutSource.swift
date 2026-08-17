@@ -49,8 +49,9 @@
   /// Reads workouts out of HealthKit as fixtures.
   ///
   /// Query filters, sorting, and limits are pushed down into HealthKit predicates rather than
-  /// applied in memory, so only matching workouts are fetched. Only running, walking, and
-  /// cycling workouts are surfaced; other activity types are skipped. Loaded fixtures are
+  /// applied in memory, so only matching workouts are fetched. Every activity type the
+  /// fixture schema represents is surfaced; deprecated or future HealthKit types the schema
+  /// does not know are skipped. Loaded fixtures are
   /// normalized — samples, events, and route points sorted and clamped into the workout's
   /// bounds, unbalanced pause/resume events dropped — so they pass `WorkoutValidator` even
   /// when HealthKit's raw data would not.

@@ -441,7 +441,7 @@ extension WorkoutFixtureCommand {
     @Option(name: .long, help: "Destination fixture JSON path.")
     var output: String
 
-    @Option(name: .long, help: "Workout activity: running, walking, or cycling.")
+    @Option(name: .long, help: "Workout activity, e.g. running, cycling, hiking, or swimming.")
     var activity: WorkoutActivity = .running
 
     @Option(name: .long, help: "Workout location: indoor, outdoor, or unknown.")

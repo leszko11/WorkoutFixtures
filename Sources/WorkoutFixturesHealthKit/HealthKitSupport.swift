@@ -54,17 +54,34 @@
     static let walkingRunningDistance = HKObjectType.quantityType(
       forIdentifier: .distanceWalkingRunning)!
     static let cyclingDistance = HKObjectType.quantityType(forIdentifier: .distanceCycling)!
+    static let swimmingDistance = HKObjectType.quantityType(forIdentifier: .distanceSwimming)!
+    static let wheelchairDistance = HKObjectType.quantityType(forIdentifier: .distanceWheelchair)!
+    static let downhillSnowSportsDistance = HKObjectType.quantityType(
+      forIdentifier: .distanceDownhillSnowSports)!
     static let activeEnergy = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
 
     static let readTypes: Set<HKObjectType> = [
-      workout, route, heartRate, walkingRunningDistance, cyclingDistance, activeEnergy,
+      workout, route, heartRate, walkingRunningDistance, cyclingDistance, swimmingDistance,
+      wheelchairDistance, downhillSnowSportsDistance, activeEnergy,
     ]
     static let shareTypes: Set<HKSampleType> = [
-      workout, route, heartRate, walkingRunningDistance, cyclingDistance, activeEnergy,
+      workout, route, heartRate, walkingRunningDistance, cyclingDistance, swimmingDistance,
+      wheelchairDistance, downhillSnowSportsDistance, activeEnergy,
     ]
 
     static func distanceType(for activity: WorkoutActivity) -> HKQuantityType {
-      activity == .cycling ? cyclingDistance : walkingRunningDistance
+      switch activity {
+      case .cycling, .handCycling:
+        cyclingDistance
+      case .swimming, .underwaterDiving, .waterFitness, .waterPolo:
+        swimmingDistance
+      case .wheelchairRunPace, .wheelchairWalkPace:
+        wheelchairDistance
+      case .downhillSkiing, .snowSports, .snowboarding:
+        downhillSnowSportsDistance
+      default:
+        walkingRunningDistance
+      }
     }
 
     static func quantityType(for metric: MetricIdentifier, activity: WorkoutActivity)
@@ -83,24 +100,109 @@
   }
 
   extension WorkoutActivity {
+    /// The `HKWorkoutActivityType` with the same name. The mapping is total
+    /// and bijective (a test asserts `healthKitType.fixtureActivity == self`
+    /// for every case).
     var healthKitType: HKWorkoutActivityType {
       switch self {
-      case .running: .running
-      case .walking: .walking
+      case .americanFootball: .americanFootball
+      case .archery: .archery
+      case .australianFootball: .australianFootball
+      case .badminton: .badminton
+      case .barre: .barre
+      case .baseball: .baseball
+      case .basketball: .basketball
+      case .bowling: .bowling
+      case .boxing: .boxing
+      case .cardioDance: .cardioDance
+      case .climbing: .climbing
+      case .cooldown: .cooldown
+      case .coreTraining: .coreTraining
+      case .cricket: .cricket
+      case .crossCountrySkiing: .crossCountrySkiing
+      case .crossTraining: .crossTraining
+      case .curling: .curling
       case .cycling: .cycling
+      case .dance: .dance
+      case .discSports: .discSports
+      case .downhillSkiing: .downhillSkiing
+      case .elliptical: .elliptical
+      case .equestrianSports: .equestrianSports
+      case .fencing: .fencing
+      case .fishing: .fishing
+      case .fitnessGaming: .fitnessGaming
+      case .flexibility: .flexibility
+      case .functionalStrengthTraining: .functionalStrengthTraining
+      case .golf: .golf
+      case .gymnastics: .gymnastics
+      case .handCycling: .handCycling
+      case .handball: .handball
+      case .highIntensityIntervalTraining: .highIntensityIntervalTraining
+      case .hiking: .hiking
+      case .hockey: .hockey
+      case .hunting: .hunting
+      case .jumpRope: .jumpRope
+      case .kickboxing: .kickboxing
+      case .lacrosse: .lacrosse
+      case .martialArts: .martialArts
+      case .mindAndBody: .mindAndBody
+      case .mixedCardio: .mixedCardio
+      case .paddleSports: .paddleSports
+      case .pickleball: .pickleball
+      case .pilates: .pilates
+      case .play: .play
+      case .preparationAndRecovery: .preparationAndRecovery
+      case .racquetball: .racquetball
+      case .rowing: .rowing
+      case .rugby: .rugby
+      case .running: .running
+      case .sailing: .sailing
+      case .skatingSports: .skatingSports
+      case .snowSports: .snowSports
+      case .snowboarding: .snowboarding
+      case .soccer: .soccer
+      case .socialDance: .socialDance
+      case .softball: .softball
+      case .squash: .squash
+      case .stairClimbing: .stairClimbing
+      case .stairs: .stairs
+      case .stepTraining: .stepTraining
+      case .surfingSports: .surfingSports
+      case .swimBikeRun: .swimBikeRun
+      case .swimming: .swimming
+      case .tableTennis: .tableTennis
+      case .taiChi: .taiChi
+      case .tennis: .tennis
+      case .trackAndField: .trackAndField
+      case .traditionalStrengthTraining: .traditionalStrengthTraining
+      case .transition: .transition
+      case .underwaterDiving: .underwaterDiving
+      case .volleyball: .volleyball
+      case .walking: .walking
+      case .waterFitness: .waterFitness
+      case .waterPolo: .waterPolo
+      case .waterSports: .waterSports
+      case .wheelchairRunPace: .wheelchairRunPace
+      case .wheelchairWalkPace: .wheelchairWalkPace
+      case .wrestling: .wrestling
+      case .yoga: .yoga
       }
     }
   }
 
   extension HKWorkoutActivityType {
+    /// The fixture activity with the same name; `nil` for deprecated or
+    /// future HealthKit types the schema does not represent.
     var fixtureActivity: WorkoutActivity? {
-      switch self {
-      case .running: .running
-      case .walking: .walking
-      case .cycling: .cycling
-      default: nil
-      }
+      // HKWorkoutActivityType is not CaseIterable, so the reverse mapping
+      // round-trips through the shared names via the forward mapping.
+      Self.fixtureActivitiesByRawValue[rawValue]
     }
+
+    private static let fixtureActivitiesByRawValue: [UInt: WorkoutActivity] =
+      Dictionary(
+        uniqueKeysWithValues: WorkoutActivity.allCases.map { ($0.healthKitType.rawValue, $0) }
+      )
   }
 
   extension WorkoutLocation {

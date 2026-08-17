@@ -34,10 +34,93 @@ public struct WorkoutID: RawRepresentable, Codable, Hashable, Sendable, Expressi
 }
 
 /// The workout activity types the fixture schema supports.
+///
+/// Each case corresponds to the non-deprecated `HKWorkoutActivityType` of the
+/// same name (as of iOS 17). The raw value is the wire format, so cases must
+/// stay in sync with the `activity` enum in `WorkoutFixture.schema.json`;
+/// a test asserts that parity.
 public enum WorkoutActivity: String, Codable, CaseIterable, Sendable {
-  case running
-  case walking
+  case americanFootball
+  case archery
+  case australianFootball
+  case badminton
+  case barre
+  case baseball
+  case basketball
+  case bowling
+  case boxing
+  case cardioDance
+  case climbing
+  case cooldown
+  case coreTraining
+  case cricket
+  case crossCountrySkiing
+  case crossTraining
+  case curling
   case cycling
+  case dance
+  case discSports
+  case downhillSkiing
+  case elliptical
+  case equestrianSports
+  case fencing
+  case fishing
+  case fitnessGaming
+  case flexibility
+  case functionalStrengthTraining
+  case golf
+  case gymnastics
+  case handCycling
+  case handball
+  case highIntensityIntervalTraining
+  case hiking
+  case hockey
+  case hunting
+  case jumpRope
+  case kickboxing
+  case lacrosse
+  case martialArts
+  case mindAndBody
+  case mixedCardio
+  case paddleSports
+  case pickleball
+  case pilates
+  case play
+  case preparationAndRecovery
+  case racquetball
+  case rowing
+  case rugby
+  case running
+  case sailing
+  case skatingSports
+  case snowSports
+  case snowboarding
+  case soccer
+  case socialDance
+  case softball
+  case squash
+  case stairClimbing
+  case stairs
+  case stepTraining
+  case surfingSports
+  case swimBikeRun
+  case swimming
+  case tableTennis
+  case taiChi
+  case tennis
+  case trackAndField
+  case traditionalStrengthTraining
+  case transition
+  case underwaterDiving
+  case volleyball
+  case walking
+  case waterFitness
+  case waterPolo
+  case waterSports
+  case wheelchairRunPace
+  case wheelchairWalkPace
+  case wrestling
+  case yoga
 }
 
 /// Where the workout took place, when known.

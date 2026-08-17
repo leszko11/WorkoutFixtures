@@ -52,6 +52,21 @@ struct CodecAndValidationTests {
     }
   }
 
+  @Test("Schema activity enum matches WorkoutActivity exactly")
+  func schemaActivitiesMatchModel() throws {
+    let schema = try #require(
+      JSONSerialization.jsonObject(with: FixtureJSONCodec.schemaData) as? [String: Any]
+    )
+    let definitions = try #require(schema["$defs"] as? [String: Any])
+    let workout = try #require(definitions["workout"] as? [String: Any])
+    let properties = try #require(workout["properties"] as? [String: Any])
+    let activity = try #require(properties["activity"] as? [String: Any])
+    let schemaActivities = try #require(activity["enum"] as? [String])
+
+    #expect(Set(schemaActivities) == Set(WorkoutActivity.allCases.map(\.rawValue)))
+    #expect(schemaActivities.count == WorkoutActivity.allCases.count)
+  }
+
   @Test("JSON Schema is packaged")
   func schemaIsPackaged() throws {
     let data = try FixtureJSONCodec.schemaData
