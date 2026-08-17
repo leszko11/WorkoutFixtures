@@ -171,6 +171,118 @@ struct DebugModelTests {
     #expect(model.exportFilename == selected.id.rawValue)
   }
 
+  private static func invalidFixture(id: String) throws -> WorkoutFixture {
+    let template = try WorkoutFixturePreset.outdoorRun.fixture()
+    return WorkoutFixture(
+      id: WorkoutID(rawValue: id),
+      workout: WorkoutDescriptor(
+        activity: template.workout.activity,
+        location: template.workout.location,
+        startDate: template.workout.startDate,
+        endDate: template.workout.startDate.addingTimeInterval(-60),
+        timeZoneIdentifier: template.workout.timeZoneIdentifier
+      ),
+      series: [],
+      events: [],
+      route: nil,
+      provenance: template.provenance
+    )
+  }
+
+  @Test("Archive export skips workouts that fail and exports the rest")
+  func archiveExportSkipsFailedWorkouts() async throws {
+    var fixtures = try WorkoutFixturePreset.allFixtures()
+    fixtures.append(try Self.invalidFixture(id: "broken-workout"))
+    let (model, _) = Self.makeModel(fixtures: fixtures)
+
+    model.prepareFullArchiveExport()
+    await model.awaitCurrentOperation()
+
+    let data = try #require(model.exportedDocument?.data)
+    let archive = try FixtureArchiveJSONCodec().decode(data)
+    #expect(archive.fixtures.count == fixtures.count - 1)
+    #expect(!archive.fixtures.contains { $0.id.rawValue == "broken-workout" })
+    #expect(model.lastSkippedWorkouts.map(\.id) == [WorkoutID(rawValue: "broken-workout")])
+    guard case .success(let message) = model.phase else {
+      Issue.record("Expected a partial export to succeed, got \(model.phase)")
+      return
+    }
+    #expect(message.contains("skipped 1"))
+  }
+
+  @Test("Archive export fails when every workout fails")
+  func archiveExportFailsWhenEverythingFails() async throws {
+    let fixtures = [
+      try Self.invalidFixture(id: "broken-1"),
+      try Self.invalidFixture(id: "broken-2"),
+    ]
+    let (model, _) = Self.makeModel(fixtures: fixtures)
+
+    model.prepareFullArchiveExport()
+    await model.awaitCurrentOperation()
+
+    #expect(model.exportedDocument == nil)
+    #expect(model.lastSkippedWorkouts.count == 2)
+    guard case .failure = model.phase else {
+      Issue.record("Expected an all-failed export to fail, got \(model.phase)")
+      return
+    }
+  }
+
+  @Test("Export filters narrow the listed and exported workouts")
+  func exportFiltersNarrowResults() async throws {
+    let fixtures = try WorkoutFixturePreset.allFixtures()
+    let (model, _) = Self.makeModel(fixtures: fixtures)
+
+    model.authorizeAndRefresh()
+    await model.awaitCurrentOperation()
+    #expect(model.filteredSummaries.count == fixtures.count)
+
+    model.exportFilter.activities = [.running]
+    #expect(model.filteredSummaries.allSatisfy { $0.activity == .running })
+    #expect(model.filteredSummaries.count == 1)
+
+    model.exportFilter.activities = []
+    model.exportFilter.limit = 2
+    #expect(model.filteredSummaries.count == 2)
+
+    model.exportFilter.limit = nil
+    model.exportFilter.minimumDurationMinutes = 100_000
+    #expect(model.filteredSummaries.isEmpty)
+
+    model.prepareFullArchiveExport()
+    await model.awaitCurrentOperation()
+    guard case .failure = model.phase else {
+      Issue.record("Expected export with no matches to fail, got \(model.phase)")
+      return
+    }
+
+    model.exportFilter.minimumDurationMinutes = nil
+    model.exportFilter.activities = [.running]
+    model.prepareFullArchiveExport()
+    await model.awaitCurrentOperation()
+
+    let data = try #require(model.exportedDocument?.data)
+    let archive = try FixtureArchiveJSONCodec().decode(data)
+    #expect(archive.fixtures.allSatisfy { $0.workout.activity == .running })
+  }
+
+  @Test("Route stripping removes GPS routes from the exported archive")
+  func archiveExportStripsRoutes() async throws {
+    let fixtures = try WorkoutFixturePreset.allFixtures()
+    #expect(fixtures.contains { $0.route != nil })
+    let (model, _) = Self.makeModel(fixtures: fixtures)
+
+    model.exportFilter.includesRoutes = false
+    model.prepareFullArchiveExport()
+    await model.awaitCurrentOperation()
+
+    let data = try #require(model.exportedDocument?.data)
+    let archive = try FixtureArchiveJSONCodec().decode(data)
+    #expect(archive.fixtures.count == fixtures.count)
+    #expect(archive.fixtures.allSatisfy { $0.route == nil })
+  }
+
   @Test("Full archive export captures every workout and route")
   func fullArchiveExportCapturesEveryWorkout() async throws {
     let fixtures = try WorkoutFixturePreset.allFixtures()

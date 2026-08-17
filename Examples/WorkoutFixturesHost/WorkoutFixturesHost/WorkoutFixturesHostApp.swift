@@ -7,11 +7,9 @@ import WorkoutFixturesDebugUI
 // embed WorkoutFixtureDebugView directly instead of using this host.
 @main
 struct WorkoutFixturesHostApp: App {
-  @State private var model = WorkoutFixtureDebugModel()
-
   var body: some Scene {
     WindowGroup {
-      WorkoutFixtureDebugView(model: model)
+      WorkoutFixtureDebugView()
     }
   }
 }

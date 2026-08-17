@@ -142,7 +142,7 @@ and skip the standalone host app entirely:
 import WorkoutFixturesDebugUI
 
 #if DEBUG
-    WorkoutFixtureDebugView(model: WorkoutFixtureDebugModel())
+    WorkoutFixtureDebugView()
 #endif
 ```
 

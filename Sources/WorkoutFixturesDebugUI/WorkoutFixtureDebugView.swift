@@ -13,20 +13,29 @@
   ///
   /// ```swift
   /// #if DEBUG
-  ///   WorkoutFixtureDebugView(model: WorkoutFixtureDebugModel())
+  ///   WorkoutFixtureDebugView()
   /// #endif
   /// ```
   public struct WorkoutFixtureDebugView: View {
-    @Bindable private var model: WorkoutFixtureDebugModel
+    @State private var model: WorkoutFixtureDebugModel
     @State private var confirmsPrivateExport = false
     @State private var privateExportRequest = PrivateExportRequest.selectedFixture
     @State private var isImportingFixture = false
 
+    /// Uses the real HealthKit adapters; the hosting app provides the
+    /// entitlement and usage descriptions.
+    public init() {
+      _model = State(initialValue: WorkoutFixtureDebugModel())
+    }
+
+    /// Uses an externally configured model — for injected sources, tests,
+    /// or previews.
     public init(model: WorkoutFixtureDebugModel) {
-      self.model = model
+      _model = State(initialValue: model)
     }
 
     public var body: some View {
+      @Bindable var model = model
       NavigationStack {
         List {
           TransferGuidanceSection()
@@ -45,6 +54,10 @@
 
           if model.lastStoredWorkout != nil {
             CleanupSection(model: model)
+          }
+
+          if !model.lastSkippedWorkouts.isEmpty {
+            SkippedSection(skipped: model.lastSkippedWorkouts)
           }
 
           StatusSection(model: model)
@@ -97,7 +110,7 @@
     var actionTitle: String {
       switch self {
       case .selectedFixture: "Export Full Fixture"
-      case .allWorkouts: "Export All Workouts"
+      case .allWorkouts: "Export Matching Workouts"
       }
     }
 
@@ -107,8 +120,8 @@
         "The full fixture can contain exact dates, a GPS route, and source metadata. "
           + "Keep the file private."
       case .allWorkouts:
-        "The archive can contain exact dates, every GPS route, and source metadata for all "
-          + "supported workouts. Keep the file private."
+        "The archive can contain exact dates, GPS routes, and source metadata for every "
+          + "matching workout. Keep the file private."
       }
     }
   }
@@ -147,28 +160,170 @@
         }
         .accessibilityIdentifier("authorizeAndRefresh")
 
+        if !model.summaries.isEmpty {
+          LabeledContent("Workouts") {
+            Text("\(model.filteredSummaries.count) of \(model.summaries.count) match")
+          }
+          .accessibilityIdentifier("workoutCounts")
+        }
+
+        NavigationLink("Export Filters") {
+          ExportFilterView(model: model)
+        }
+        .accessibilityIdentifier("exportFilters")
+
+        NavigationLink {
+          WorkoutListView(model: model)
+        } label: {
+          LabeledContent("Browse Workouts", value: "\(model.filteredSummaries.count)")
+        }
+        .accessibilityIdentifier("browseWorkouts")
+
         #if !targetEnvironment(simulator)
-          Button("Export All Workouts for Mocking", role: .destructive) {
+          Button("Export Matching Workouts for Mocking", role: .destructive) {
             requestFullArchiveExport()
           }
           .accessibilityIdentifier("exportAllWorkouts")
 
           Text(
-            "Captures supported workouts, metric samples, events, and every route into one file."
+            "Captures every workout matching the export filters — samples, events, and routes — "
+              + "into one file. Workouts that fail to capture are skipped."
           )
           .font(.footnote)
           .foregroundStyle(.secondary)
         #endif
+      }
+    }
+  }
 
-        ForEach(model.summaries) { summary in
-          Button {
-            model.select(summary)
-          } label: {
-            WorkoutSummaryRow(activity: summary.activity, startDate: summary.startDate)
+  private struct ExportFilterView: View {
+    @Bindable var model: WorkoutFixtureDebugModel
+
+    var body: some View {
+      Form {
+        Section {
+          ForEach(WorkoutActivity.allCases, id: \.self) { activity in
+            Toggle(activity.rawValue.capitalized, isOn: activityBinding(activity))
+              .accessibilityIdentifier("filterActivity-\(activity.rawValue)")
           }
-          .accessibilityIdentifier("workoutSummaryRow-\(summary.id.rawValue)")
+        } header: {
+          Text("Activities")
+        } footer: {
+          Text("With nothing selected, every supported activity is included.")
+        }
+
+        Section("Date") {
+          Picker("Time window", selection: $model.exportFilter.dateWindow) {
+            ForEach(WorkoutExportFilter.DateWindow.allCases, id: \.self) { window in
+              Text(window.displayName).tag(window)
+            }
+          }
+          .accessibilityIdentifier("filterDateWindow")
+        }
+
+        Section {
+          LabeledContent("Min distance (km)") {
+            TextField("Any", value: optionalBinding(\.minimumDistanceKilometers), format: .number)
+              .multilineTextAlignment(.trailing)
+              .accessibilityIdentifier("filterMinDistance")
+          }
+          LabeledContent("Min duration (min)") {
+            TextField("Any", value: optionalBinding(\.minimumDurationMinutes), format: .number)
+              .multilineTextAlignment(.trailing)
+              .accessibilityIdentifier("filterMinDuration")
+          }
+          LabeledContent("Max workouts") {
+            TextField("All", value: limitBinding, format: .number)
+              .multilineTextAlignment(.trailing)
+              .accessibilityIdentifier("filterLimit")
+          }
+        } header: {
+          Text("Thresholds")
+        } footer: {
+          Text("Zero means no limit. The newest workouts are kept when a maximum is set.")
+        }
+
+        Section {
+          Toggle("Include GPS routes", isOn: $model.exportFilter.includesRoutes)
+            .accessibilityIdentifier("filterIncludeRoutes")
+        } footer: {
+          Text(
+            "Routes identify places you visit. Exclude them unless the code under test needs them."
+          )
+        }
+
+        if !model.summaries.isEmpty {
+          LabeledContent("Matching workouts", value: "\(model.filteredSummaries.count)")
+            .accessibilityIdentifier("filterMatchCount")
         }
       }
+      .navigationTitle("Export Filters")
+      #if os(iOS)
+        .keyboardType(.decimalPad)
+      #endif
+    }
+
+    private func activityBinding(_ activity: WorkoutActivity) -> Binding<Bool> {
+      Binding(
+        get: { model.exportFilter.activities.contains(activity) },
+        set: { isIncluded in
+          if isIncluded {
+            model.exportFilter.activities.insert(activity)
+          } else {
+            model.exportFilter.activities.remove(activity)
+          }
+        }
+      )
+    }
+
+    // Zero-backed bindings for the optional thresholds: 0 in the field means
+    // "no filter", which round-trips as nil on the model.
+    private func optionalBinding(
+      _ keyPath: WritableKeyPath<WorkoutExportFilter, Double?>
+    ) -> Binding<Double> {
+      Binding(
+        get: { model.exportFilter[keyPath: keyPath] ?? 0 },
+        set: { model.exportFilter[keyPath: keyPath] = $0 > 0 ? $0 : nil }
+      )
+    }
+
+    private var limitBinding: Binding<Int> {
+      Binding(
+        get: { model.exportFilter.limit ?? 0 },
+        set: { model.exportFilter.limit = $0 > 0 ? $0 : nil }
+      )
+    }
+  }
+
+  private struct WorkoutListView: View {
+    let model: WorkoutFixtureDebugModel
+
+    var body: some View {
+      List(model.filteredSummaries) { summary in
+        Button {
+          model.select(summary)
+        } label: {
+          HStack {
+            WorkoutSummaryRow(activity: summary.activity, startDate: summary.startDate)
+            if model.selectedFixture?.id == summary.id {
+              Spacer()
+              Image(systemName: "checkmark")
+                .foregroundStyle(.tint)
+            }
+          }
+        }
+        .accessibilityIdentifier("workoutSummaryRow-\(summary.id.rawValue)")
+      }
+      .overlay {
+        if model.filteredSummaries.isEmpty {
+          ContentUnavailableView(
+            "No Workouts",
+            systemImage: "figure.run",
+            description: Text("Authorize and refresh, or loosen the export filters.")
+          )
+        }
+      }
+      .navigationTitle("Workouts (\(model.filteredSummaries.count))")
     }
   }
 
@@ -230,6 +385,27 @@
           model.removeLastImport()
         }
         .accessibilityIdentifier("removeLastImport")
+      }
+    }
+  }
+
+  private struct SkippedSection: View {
+    let skipped: [WorkoutFixtureDebugModel.SkippedWorkout]
+    private static let previewCount = 5
+
+    var body: some View {
+      Section("Skipped by Last Export") {
+        ForEach(skipped.prefix(Self.previewCount)) { workout in
+          VStack(alignment: .leading) {
+            Text(workout.id.rawValue).font(.footnote.monospaced())
+            Text(workout.reason).font(.caption).foregroundStyle(.secondary)
+          }
+        }
+        if skipped.count > Self.previewCount {
+          Text("… and \(skipped.count - Self.previewCount) more")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
       }
     }
   }

@@ -27,7 +27,18 @@
     private let authorization: any HealthAuthorizing
     private let requestsAuthorization: Bool
 
+    /// A workout the last archive export could not capture, with the reason.
+    public struct SkippedWorkout: Equatable, Sendable, Identifiable {
+      public let id: WorkoutID
+      public let reason: String
+    }
+
+    /// Criteria for listing and exporting workouts; bindable from the filter screen.
+    public var exportFilter = WorkoutExportFilter()
+
     public private(set) var summaries: [WorkoutSummary] = []
+    /// Workouts the last archive export skipped because capture or validation failed.
+    public private(set) var lastSkippedWorkouts: [SkippedWorkout] = []
     public private(set) var selectedFixture: WorkoutFixture?
     public private(set) var validationIssues: [ValidationIssue] = []
     public private(set) var selectedSampleCount = 0
@@ -71,13 +82,19 @@
       )
     }
 
+    /// The loaded summaries after applying ``exportFilter``.
+    public var filteredSummaries: [WorkoutSummary] {
+      exportFilter.apply(to: summaries)
+    }
+
     public func authorizeAndRefresh() {
       run("Requesting HealthKit access") {
         if self.requestsAuthorization {
           try await self.authorization.requestAuthorization(for: .readWrite)
         }
-        self.summaries = try await self.source.summaries(matching: WorkoutQuery())
-        return "Loaded \(self.summaries.count) HealthKit workout(s)."
+        self.summaries = try await self.source.summaries(matching: self.exportFilter.query())
+        return "Loaded \(self.summaries.count) workout(s); "
+          + "\(self.filteredSummaries.count) match the filters."
       }
     }
 
@@ -144,34 +161,54 @@
       }
     }
 
+    /// Exports every workout matching ``exportFilter`` as one archive.
+    ///
+    /// Workouts whose capture or validation fails are skipped and recorded in
+    /// ``lastSkippedWorkouts`` instead of aborting the export; the export
+    /// fails only when nothing could be captured.
     public func prepareFullArchiveExport() {
       run("Requesting HealthKit access") {
         if self.requestsAuthorization {
           try await self.authorization.requestAuthorization(for: .read)
         }
-        let availableSummaries = try await self.source.summaries(matching: WorkoutQuery())
-        guard !availableSummaries.isEmpty else {
+        self.lastSkippedWorkouts = []
+        let filter = self.exportFilter
+        self.summaries = try await self.source.summaries(matching: filter.query())
+        let matching = filter.apply(to: self.summaries)
+        guard !matching.isEmpty else {
           throw ArchiveExportError.noSupportedWorkouts
         }
 
         var fixtures: [WorkoutFixture] = []
-        fixtures.reserveCapacity(availableSummaries.count)
-        for (index, summary) in availableSummaries.enumerated() {
+        var skipped: [SkippedWorkout] = []
+        fixtures.reserveCapacity(matching.count)
+        for (index, summary) in matching.enumerated() {
           try Task.checkCancellation()
-          self.phase = .working("Capturing workout \(index + 1) of \(availableSummaries.count)")
-          let fixture = try await self.source.fixture(for: summary.id)
+          self.phase = .working("Capturing workout \(index + 1) of \(matching.count)")
           do {
+            var fixture = try await self.source.fixture(for: summary.id)
+            if !filter.includesRoutes {
+              fixture = fixture.removingRoute()
+            }
             try WorkoutValidator().requireValid(fixture)
-          } catch let error as FixtureValidationError {
-            self.selectFixture(fixture)
-            throw ArchiveExportError.invalidWorkout(id: summary.id, issues: error.issues)
+            fixtures.append(fixture)
+          } catch let cancellation as CancellationError {
+            throw cancellation
+          } catch {
+            skipped.append(SkippedWorkout(id: summary.id, reason: error.localizedDescription))
           }
-          fixtures.append(fixture)
+        }
+        self.lastSkippedWorkouts = skipped
+        guard !fixtures.isEmpty else {
+          throw ArchiveExportError.everyWorkoutFailed(count: skipped.count)
         }
 
         let document = try await OffMainCodec.archiveDocument(fixtures: fixtures)
         self.presentExport(document: document, filename: "workout-fixtures-archive")
-        return "Prepared \(fixtures.count) workout(s) in one mock archive."
+        if skipped.isEmpty {
+          return "Prepared \(fixtures.count) workout(s) in one mock archive."
+        }
+        return "Prepared \(fixtures.count) workout(s); skipped \(skipped.count) that failed."
       }
     }
 
@@ -234,16 +271,16 @@
     }
   }
 
-  enum ArchiveExportError: Error, LocalizedError {
+  enum ArchiveExportError: Error, Equatable, LocalizedError {
     case noSupportedWorkouts
-    case invalidWorkout(id: WorkoutID, issues: [ValidationIssue])
+    case everyWorkoutFailed(count: Int)
 
     var errorDescription: String? {
       switch self {
       case .noSupportedWorkouts:
-        "No supported running, walking, or cycling workouts were found."
-      case .invalidWorkout(let id, let issues):
-        "Workout \(id.rawValue) failed validation: \(issues.map(\.code).joined(separator: ", "))."
+        "No workouts match the current export filters."
+      case .everyWorkoutFailed(let count):
+        "All \(count) matching workout(s) failed to capture or validate."
       }
     }
   }

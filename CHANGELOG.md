@@ -11,6 +11,12 @@ has not yet tagged a release.
 - `WorkoutFixturesDebugUI` product: embeddable `WorkoutFixtureDebugView` /
   `WorkoutFixtureDebugModel` capture-export-import-replay panel for any
   HealthKit-entitled app. The example host app is now a thin shell around it.
+  The view embeds with a plain `WorkoutFixtureDebugView()`; workouts are
+  browsed on a dedicated screen instead of the main list; `WorkoutExportFilter`
+  scopes listing and export by activity, date window, minimum distance and
+  duration, an optional workout cap, and optional GPS-route stripping; archive
+  export skips (and reports) workouts that fail to capture or validate instead
+  of aborting, failing only when nothing could be captured.
 - GPX import: `GPXWorkoutImporter` in the portable core and the `import-gpx`
   CLI subcommand (route, haversine-derived distance series, heart rate from
   `gpxtpx` extensions).

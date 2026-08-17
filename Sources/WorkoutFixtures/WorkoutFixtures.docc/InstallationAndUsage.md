@@ -79,9 +79,14 @@ and skip the standalone host app entirely:
 import WorkoutFixturesDebugUI
 
 #if DEBUG
-  WorkoutFixtureDebugView(model: WorkoutFixtureDebugModel())
+  WorkoutFixtureDebugView()
 #endif
 ```
+
+The panel lists workouts on a separate screen and exports only what matches
+its export filters (activities, date window, minimum distance and duration,
+optional route stripping, and a workout cap) — workouts that fail to capture
+are skipped and reported rather than aborting the export.
 
 The hosting app needs the HealthKit capability plus
 `NSHealthShareUsageDescription`/`NSHealthUpdateUsageDescription`.
