@@ -110,3 +110,7 @@ fastlane/test_output
 
 # Claude Code local state (agent worktrees, session files)
 .claude/
+
+## Generated when this package is consumed as a local Tuist dependency
+Derived/
+WorkoutFixtures.xcodeproj/
