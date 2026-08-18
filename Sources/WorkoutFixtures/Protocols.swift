@@ -7,9 +7,37 @@ public protocol WorkoutFixtureSource: Sendable {
   /// source answers a given query identically.
   func summaries(matching query: WorkoutQuery) async throws -> [WorkoutSummary]
 
+  /// Returns summaries while allowing sources to avoid work for disabled capture components.
+  func summaries(
+    matching query: WorkoutQuery,
+    captureOptions: WorkoutFixtureCaptureOptions
+  ) async throws -> [WorkoutSummary]
+
   /// Returns the complete fixture for `id`.
   /// - Throws: ``WorkoutFixtureSourceError/notFound(_:)`` when no fixture has that ID.
   func fixture(for id: WorkoutID) async throws -> WorkoutFixture
+
+  /// Returns a fixture containing only the requested expensive components.
+  func fixture(
+    for id: WorkoutID,
+    captureOptions: WorkoutFixtureCaptureOptions
+  ) async throws -> WorkoutFixture
+}
+
+extension WorkoutFixtureSource {
+  public func summaries(
+    matching query: WorkoutQuery,
+    captureOptions: WorkoutFixtureCaptureOptions
+  ) async throws -> [WorkoutSummary] {
+    try await summaries(matching: query)
+  }
+
+  public func fixture(
+    for id: WorkoutID,
+    captureOptions: WorkoutFixtureCaptureOptions
+  ) async throws -> WorkoutFixture {
+    try await fixture(for: id).applyingCaptureOptions(captureOptions)
+  }
 }
 
 /// Write access to a workout store (HealthKit, in-memory, ...).

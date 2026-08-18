@@ -28,6 +28,22 @@ has not yet tagged a release.
   back to a `.json.gz` resource. Compression is a transport concern only —
   the JSON wire format and schema version are unchanged.
 
+- Selective capture: `WorkoutFixtureCaptureOptions` picks which expensive
+  components a source reads (metric series, GPS routes) and whether routes are
+  simplified. `WorkoutFixtureSource` gained option-aware `summaries(matching:
+  captureOptions:)` and `fixture(for:captureOptions:)`, with protocol defaults
+  so existing conformers keep working. `HealthKitWorkoutSource` honours the
+  options by never issuing queries for disabled components; the debug panel
+  exposes them in a "Captured Data" section.
+- `WorkoutRouteSimplifier.adaptive(_:)` deterministically reduces captured
+  routes: it drops points with unusable accuracy and exact duplicates, keeps a
+  minimum three-second cadence and both endpoints, and preserves the altitude
+  minimum and maximum in each three-minute bucket.
+- `FixtureJSONFormatting` selects `.canonical` (pretty-printed, the default and
+  unchanged) or `.compact` output from `FixtureJSONCodec.encode(_:formatting:)`
+  and `FixtureArchiveJSONCodec.encode(_:formatting:)`. The debug panel now
+  exports compact, gzipped `.json.gz` documents and names them accordingly.
+
 - `WorkoutActivity` now covers every non-deprecated `HKWorkoutActivityType`
   (81 activities, previously running/walking/cycling only). The fixture JSON
   schema's activity enum is generated from the Swift cases and a test asserts

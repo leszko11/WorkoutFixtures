@@ -127,7 +127,9 @@ let stored = try await sink.store(fixture)
 ```
 
 The source pushes the query's date window, activities, sort, and limit into
-HealthKit and reads each workout's own time zone from its metadata. The sink is
+HealthKit and reads each workout's own time zone from its metadata. Option-aware
+calls accept `WorkoutFixtureCaptureOptions`, allowing callers to skip disabled
+metric and route queries and optionally simplify captured routes. The sink is
 an actor that writes bounded sample/route chunks with cooperative cancellation,
 stamps time-zone and indoor metadata for faithful round trips, and rolls back
 already-persisted samples (children before the parent workout) if an import
@@ -149,8 +151,8 @@ import WorkoutFixturesDebugUI
 Requirements for the hosting app: the HealthKit capability plus
 `NSHealthShareUsageDescription`/`NSHealthUpdateUsageDescription`. The panel
 lists and captures workouts, exports shareable (redacted) or full fixtures and
-one-file archives, imports fixture files, replays fixtures into HealthKit, and
-deletes the workouts it imported.
+one-file archives as compact `.json.gz`, imports plain JSON or gzip fixture
+files, replays fixtures into HealthKit, and deletes the workouts it imported.
 
 The entitled reference integration is
 `Examples/WorkoutFixturesHost/WorkoutFixturesHost.xcodeproj` — a thin shell
@@ -163,12 +165,12 @@ tests.
    select your own development team locally; the repository intentionally
    contains no team identifier, and CI enforces that).
 2. Tap **Export All Workouts for Mocking**, confirm the privacy warning, and
-   save `workout-fixtures-archive.json` to iCloud Drive or AirDrop it to your
+   save `workout-fixtures-archive.json.gz` to iCloud Drive or AirDrop it to your
    Mac.
 3. Optionally fan the archive out into per-test fixtures:
 
    ```console
-   workout-fixture split workout-fixtures-archive.json --output-directory Fixtures
+   workout-fixture split workout-fixtures-archive.json.gz --output-directory Fixtures
    ```
 
 4. Add the archive (or split fixtures) to a test-support target and load it
@@ -182,7 +184,8 @@ tests.
    ```
 
 Use `bundle: .module` when the archive is a SwiftPM target resource.
-`JSONWorkoutSource` accepts both archives and single-fixture files. Do not
+`JSONWorkoutSource` accepts both archives and single-fixture files, detecting
+gzip by magic bytes rather than relying on the extension. Do not
 include a private device archive in a production application bundle.
 
 ### Optional replay into Simulator HealthKit

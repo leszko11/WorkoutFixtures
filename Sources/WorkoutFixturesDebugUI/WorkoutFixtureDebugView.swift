@@ -93,7 +93,7 @@
       .fileExporter(
         isPresented: $model.isExporting,
         document: model.exportedDocument,
-        contentType: .json,
+        contentType: .gzip,
         defaultFilename: model.exportFilename
       ) { result in
         if case .failure(let error) = result {
@@ -186,8 +186,8 @@
           .accessibilityIdentifier("exportAllWorkouts")
 
           Text(
-            "Captures every workout matching the export filters — samples, events, and routes — "
-              + "into one file. Workouts that fail to capture are skipped."
+            "Captures every workout matching the export filters with the selected data into one "
+              + "compressed file. Workouts that fail to capture are skipped."
           )
           .font(.footnote)
           .foregroundStyle(.secondary)
@@ -243,14 +243,7 @@
           Text("Zero means no limit. The newest workouts are kept when a maximum is set.")
         }
 
-        Section {
-          Toggle("Include GPS routes", isOn: $model.exportFilter.includesRoutes)
-            .accessibilityIdentifier("filterIncludeRoutes")
-        } footer: {
-          Text(
-            "Routes identify places you visit. Exclude them unless the code under test needs them."
-          )
-        }
+        CapturedDataSection(model: model)
 
         if !model.summaries.isEmpty {
           LabeledContent("Matching workouts", value: "\(model.filteredSummaries.count)")
@@ -291,6 +284,32 @@
         get: { model.exportFilter.limit ?? 0 },
         set: { model.exportFilter.limit = $0 > 0 ? $0 : nil }
       )
+    }
+  }
+
+  private struct CapturedDataSection: View {
+    @Bindable var model: WorkoutFixtureDebugModel
+
+    var body: some View {
+      Section {
+        Toggle("Distance", isOn: $model.exportFilter[captures: .distance])
+          .accessibilityIdentifier("filterCaptureDistance")
+        Toggle("Heart rate", isOn: $model.exportFilter[captures: .heartRate])
+          .accessibilityIdentifier("filterCaptureHeartRate")
+        Toggle("Active energy", isOn: $model.exportFilter[captures: .activeEnergy])
+          .accessibilityIdentifier("filterCaptureActiveEnergy")
+        Toggle("GPS routes", isOn: $model.exportFilter.includesRoutes)
+          .accessibilityIdentifier("filterIncludeRoutes")
+        Toggle("Simplify routes", isOn: $model.exportFilter.simplifiesRoutes)
+          .disabled(!model.exportFilter.includesRoutes)
+          .accessibilityIdentifier("filterSimplifyRoutes")
+      } header: {
+        Text("Captured Data")
+      } footer: {
+        Text(
+          "Disabled data is not queried from HealthKit. Elevation is included with GPS routes. Routes can identify places you visit."
+        )
+      }
     }
   }
 

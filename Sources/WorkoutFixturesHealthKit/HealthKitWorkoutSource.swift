@@ -46,6 +46,18 @@
     }
   }
 
+  struct HealthKitCapturePlan: Equatable {
+    let metrics: [MetricIdentifier]
+    let queriesRoutePresence: Bool
+    let fetchesRoute: Bool
+
+    init(options: WorkoutFixtureCaptureOptions) {
+      metrics = MetricIdentifier.allCases.filter { options.includedMetrics.contains($0) }
+      queriesRoutePresence = options.includesRoutes
+      fetchesRoute = options.includesRoutes
+    }
+  }
+
   /// Reads workouts out of HealthKit as fixtures.
   ///
   /// Query filters, sorting, and limits are pushed down into HealthKit predicates rather than
@@ -84,7 +96,15 @@
     /// Fetches matching workouts with one HealthKit query, then builds their summaries
     /// concurrently while preserving the query's sort order.
     public func summaries(matching query: WorkoutQuery) async throws -> [WorkoutSummary] {
+      try await summaries(matching: query, captureOptions: .full)
+    }
+
+    public func summaries(
+      matching query: WorkoutQuery,
+      captureOptions: WorkoutFixtureCaptureOptions
+    ) async throws -> [WorkoutSummary] {
       let plan = HealthKitQueryPlan(query: query)
+      let capturePlan = HealthKitCapturePlan(options: captureOptions)
       if plan.limit == 0 { return [] }
       let descriptor = HKSampleQueryDescriptor<HKWorkout>(
         predicates: [.workout(plan.predicate)],
@@ -102,7 +122,14 @@
         for (index, match) in matches.enumerated() {
           group.addTask {
             try Task.checkCancellation()
-            return (index, try await makeSummary(match.workout, activity: match.activity))
+            return (
+              index,
+              try await makeSummary(
+                match.workout,
+                activity: match.activity,
+                capturePlan: capturePlan
+              )
+            )
           }
         }
         var summaries = [WorkoutSummary?](repeating: nil, count: matches.count)
@@ -119,6 +146,13 @@
     /// - Throws: `WorkoutFixtureSourceError.notFound` when `id` is not a UUID, no workout
     ///   matches, or the workout's activity type has no fixture mapping.
     public func fixture(for id: WorkoutID) async throws -> WorkoutFixture {
+      try await fixture(for: id, captureOptions: .full)
+    }
+
+    public func fixture(
+      for id: WorkoutID,
+      captureOptions: WorkoutFixtureCaptureOptions
+    ) async throws -> WorkoutFixture {
       guard let uuid = UUID(uuidString: id.rawValue) else {
         throw WorkoutFixtureSourceError.notFound(id)
       }
@@ -134,12 +168,12 @@
         throw WorkoutFixtureSourceError.notFound(id)
       }
 
-      async let heartRate = quantitySeries(.heartRate, activity: activity, workout: workout)
-      async let distance = quantitySeries(.distance, activity: activity, workout: workout)
-      async let activeEnergy = quantitySeries(.activeEnergy, activity: activity, workout: workout)
-      async let route = workoutRoute(for: workout)
-
-      let series = try await [heartRate, distance, activeEnergy].compactMap { $0 }
+      let capturePlan = HealthKitCapturePlan(options: captureOptions)
+      let components = try await captureComponents(
+        plan: capturePlan,
+        activity: activity,
+        workout: workout
+      )
       let fixture = WorkoutFixture(
         id: id,
         workout: WorkoutDescriptor(
@@ -152,9 +186,9 @@
             fallback: timeZone
           )
         ),
-        series: series,
+        series: capturePlan.metrics.compactMap { components.series[$0] },
         events: workout.workoutEvents?.compactMap(WorkoutEvent.init(healthKitEvent:)) ?? [],
-        route: try await route,
+        route: components.route,
         provenance: FixtureProvenance(
           kind: .captured,
           createdAt: workout.startDate,
@@ -166,27 +200,41 @@
           )
         )
       )
-      return HealthKitFixtureNormalizer.normalize(fixture)
+      return HealthKitFixtureNormalizer.normalize(fixture).applyingCaptureOptions(captureOptions)
     }
 
     private func makeSummary(
       _ workout: HKWorkout,
-      activity: WorkoutActivity
+      activity: WorkoutActivity,
+      capturePlan: HealthKitCapturePlan
     ) async throws -> WorkoutSummary {
-      let distanceType = HealthKitTypes.distanceType(for: activity)
-      let distance = workout.statistics(for: distanceType)?.sumQuantity()?
-        .doubleValue(for: .meter())
-      let energy = workout.statistics(for: HealthKitTypes.activeEnergy)?.sumQuantity()?
-        .doubleValue(for: .kilocalorie())
-      let heartRate = workout.statistics(for: HealthKitTypes.heartRate)?.averageQuantity()?
-        .doubleValue(for: HKUnit(from: UnitIdentifier.countPerMinute.rawValue))
-      let routePredicate = HKQuery.predicateForObjects(from: workout)
-      let routeDescriptor = HKSampleQueryDescriptor<HKWorkoutRoute>(
-        predicates: [.workoutRoute(routePredicate)],
-        sortDescriptors: [],
-        limit: 1
-      )
-      let hasRoute = try await !routeDescriptor.result(for: healthStore).isEmpty
+      let distance =
+        capturePlan.metrics.contains(.distance)
+        ? workout.statistics(for: HealthKitTypes.distanceType(for: activity))?.sumQuantity()?
+          .doubleValue(for: .meter())
+        : nil
+      let energy =
+        capturePlan.metrics.contains(.activeEnergy)
+        ? workout.statistics(for: HealthKitTypes.activeEnergy)?.sumQuantity()?
+          .doubleValue(for: .kilocalorie())
+        : nil
+      let heartRate =
+        capturePlan.metrics.contains(.heartRate)
+        ? workout.statistics(for: HealthKitTypes.heartRate)?.averageQuantity()?
+          .doubleValue(for: HKUnit(from: UnitIdentifier.countPerMinute.rawValue))
+        : nil
+      let hasRoute: Bool
+      if capturePlan.queriesRoutePresence {
+        let routePredicate = HKQuery.predicateForObjects(from: workout)
+        let routeDescriptor = HKSampleQueryDescriptor<HKWorkoutRoute>(
+          predicates: [.workoutRoute(routePredicate)],
+          sortDescriptors: [],
+          limit: 1
+        )
+        hasRoute = try await !routeDescriptor.result(for: healthStore).isEmpty
+      } else {
+        hasRoute = false
+      }
       return WorkoutSummary(
         id: WorkoutID(rawValue: workout.uuid.uuidString),
         activity: activity,
@@ -200,6 +248,45 @@
         averageHeartRate: heartRate,
         hasRoute: hasRoute
       )
+    }
+
+    private enum CapturedComponent: Sendable {
+      case series(MetricIdentifier, MetricSeries?)
+      case route(WorkoutRoute?)
+    }
+
+    private func captureComponents(
+      plan: HealthKitCapturePlan,
+      activity: WorkoutActivity,
+      workout: HKWorkout
+    ) async throws -> (series: [MetricIdentifier: MetricSeries], route: WorkoutRoute?) {
+      try await withThrowingTaskGroup(of: CapturedComponent.self) { group in
+        for metric in plan.metrics {
+          group.addTask {
+            .series(
+              metric,
+              try await quantitySeries(metric, activity: activity, workout: workout)
+            )
+          }
+        }
+        if plan.fetchesRoute {
+          group.addTask {
+            .route(try await workoutRoute(for: workout))
+          }
+        }
+
+        var series: [MetricIdentifier: MetricSeries] = [:]
+        var route: WorkoutRoute?
+        for try await component in group {
+          switch component {
+          case .series(let metric, let capturedSeries):
+            series[metric] = capturedSeries
+          case .route(let capturedRoute):
+            route = capturedRoute
+          }
+        }
+        return (series, route)
+      }
     }
 
     private func quantitySeries(

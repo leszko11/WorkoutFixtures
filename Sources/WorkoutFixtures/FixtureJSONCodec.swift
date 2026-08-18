@@ -1,5 +1,13 @@
 import Foundation
 
+/// Stable output styles for fixture and archive JSON.
+public enum FixtureJSONFormatting: Equatable, Sendable {
+  /// Human-readable JSON matching the package's existing canonical wire representation.
+  case canonical
+  /// Sorted, deterministic JSON without insignificant whitespace.
+  case compact
+}
+
 /// How decoding treats JSON fields the fixture schema does not define.
 public enum UnknownFieldPolicy: String, Codable, Sendable {
   /// Fail decoding, naming the first unknown field; the default, so typos surface immediately.
@@ -78,11 +86,14 @@ public struct FixtureJSONCodec: Sendable {
   /// dates with fractional seconds).
   /// - Throws: ``FixtureCodingError/unsupportedSchemaVersion(_:)`` when the fixture's schema
   ///   version is not ``SchemaVersion/current``.
-  public func encode(_ fixture: WorkoutFixture) throws -> Data {
+  public func encode(
+    _ fixture: WorkoutFixture,
+    formatting: FixtureJSONFormatting = .canonical
+  ) throws -> Data {
     guard fixture.schemaVersion == .current else {
       throw FixtureCodingError.unsupportedSchemaVersion(fixture.schemaVersion)
     }
-    return try CanonicalFixtureJSON.encode(fixture)
+    return try CanonicalFixtureJSON.encode(fixture, formatting: formatting)
   }
 
   /// Rewrites fixture JSON into canonical form: a strict decode followed by a canonical
@@ -125,9 +136,15 @@ enum CanonicalFixtureJSON {
     return decoder
   }
 
-  static func encode<Value: Encodable>(_ value: Value) throws -> Data {
+  static func encode<Value: Encodable>(
+    _ value: Value,
+    formatting: FixtureJSONFormatting = .canonical
+  ) throws -> Data {
     let encoder = JSONEncoder()
-    encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+    encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+    if formatting == .canonical {
+      encoder.outputFormatting.insert(.prettyPrinted)
+    }
     encoder.dateEncodingStrategy = .custom { date, encoder in
       var container = encoder.singleValueContainer()
       try container.encode(makeDateFormatter().string(from: date))

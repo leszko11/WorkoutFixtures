@@ -8,8 +8,8 @@ import Foundation
 ///
 /// - `WORKOUT_FIXTURES_MODE=live` — use the real HealthKit adapters.
 /// - `WORKOUT_FIXTURES_MODE=presets` — use bundled preset fixtures.
-/// - `WORKOUT_FIXTURES_MODE=json` + `WORKOUT_FIXTURES_PATH=/path/file.json`
-///   — load a fixture or archive file.
+/// - `WORKOUT_FIXTURES_MODE=json` + `WORKOUT_FIXTURES_PATH=/path/file.json[.gz]`
+///   — load a plain or gzip-compressed fixture or archive file.
 /// - `WORKOUT_FIXTURES_MODE=resource` + `WORKOUT_FIXTURES_RESOURCE=name`
 ///   — load a bundled fixture or archive resource.
 ///

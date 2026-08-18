@@ -50,6 +50,9 @@
     public var isExporting = false
 
     @ObservationIgnored private var currentOperation: Task<Void, Never>?
+    @ObservationIgnored var archiveDocumentBuilder:
+      @Sendable ([WorkoutFixture]) async throws ->
+        FixtureDocument = OffMainCodec.archiveDocument(fixtures:)
 
     public init(
       source: any WorkoutFixtureSource,
@@ -92,7 +95,10 @@
         if self.requestsAuthorization {
           try await self.authorization.requestAuthorization(for: .readWrite)
         }
-        self.summaries = try await self.source.summaries(matching: self.exportFilter.query())
+        self.summaries = try await self.source.summaries(
+          matching: self.exportFilter.query(),
+          captureOptions: self.exportFilter.captureOptions
+        )
         return "Loaded \(self.summaries.count) workout(s); "
           + "\(self.filteredSummaries.count) match the filters."
       }
@@ -100,7 +106,10 @@
 
     public func select(_ summary: WorkoutSummary) {
       run("Capturing workout") {
-        let fixture = try await self.source.fixture(for: summary.id)
+        let fixture = try await self.source.fixture(
+          for: summary.id,
+          captureOptions: self.exportFilter.captureOptions
+        )
         self.selectFixture(fixture)
         return "Captured \(summary.activity.rawValue) fixture."
       }
@@ -146,6 +155,7 @@
     public func prepareShareableExport(seed: UInt64 = 42) {
       guard let selectedFixture else { return }
       run("Preparing shareable export") {
+        self.phase = .working("Encoding and compressing 1 workout…")
         let export = try await OffMainCodec.shareableDocument(fixture: selectedFixture, seed: seed)
         self.presentExport(document: export.document, filename: export.filename)
         return "Prepared shareable fixture."
@@ -155,8 +165,9 @@
     public func prepareFullExport() {
       guard let selectedFixture else { return }
       run("Preparing full export") {
+        self.phase = .working("Encoding and compressing 1 workout…")
         let document = try await OffMainCodec.document(fixture: selectedFixture)
-        self.presentExport(document: document, filename: selectedFixture.id.rawValue)
+        self.presentExport(document: document, filename: "\(selectedFixture.id.rawValue).json.gz")
         return "Prepared full fixture."
       }
     }
@@ -173,7 +184,10 @@
         }
         self.lastSkippedWorkouts = []
         let filter = self.exportFilter
-        self.summaries = try await self.source.summaries(matching: filter.query())
+        self.summaries = try await self.source.summaries(
+          matching: filter.query(),
+          captureOptions: filter.captureOptions
+        )
         let matching = filter.apply(to: self.summaries)
         guard !matching.isEmpty else {
           throw ArchiveExportError.noSupportedWorkouts
@@ -186,10 +200,10 @@
           try Task.checkCancellation()
           self.phase = .working("Capturing workout \(index + 1) of \(matching.count)")
           do {
-            var fixture = try await self.source.fixture(for: summary.id)
-            if !filter.includesRoutes {
-              fixture = fixture.removingRoute()
-            }
+            let fixture = try await self.source.fixture(
+              for: summary.id,
+              captureOptions: filter.captureOptions
+            )
             try WorkoutValidator().requireValid(fixture)
             fixtures.append(fixture)
           } catch let cancellation as CancellationError {
@@ -203,8 +217,9 @@
           throw ArchiveExportError.everyWorkoutFailed(count: skipped.count)
         }
 
-        let document = try await OffMainCodec.archiveDocument(fixtures: fixtures)
-        self.presentExport(document: document, filename: "workout-fixtures-archive")
+        self.phase = .working("Encoding and compressing \(fixtures.count) workouts…")
+        let document = try await self.archiveDocumentBuilder(fixtures)
+        self.presentExport(document: document, filename: "workout-fixtures-archive.json.gz")
         if skipped.isEmpty {
           return "Prepared \(fixtures.count) workout(s) in one mock archive."
         }
@@ -310,7 +325,8 @@
 
     @concurrent
     static func document(fixture: WorkoutFixture) async throws -> FixtureDocument {
-      try FixtureDocument(fixture: fixture)
+      try Task.checkCancellation()
+      return try FixtureDocument(fixture: fixture)
     }
 
     @concurrent
@@ -319,12 +335,14 @@
       seed: UInt64
     ) async throws -> (document: FixtureDocument, filename: String) {
       let redacted = try WorkoutRedactor().redact(fixture, seed: seed)
-      return (try FixtureDocument(fixture: redacted), "\(redacted.id.rawValue)-shareable")
+      try Task.checkCancellation()
+      return (try FixtureDocument(fixture: redacted), "\(redacted.id.rawValue)-shareable.json.gz")
     }
 
     @concurrent
     static func archiveDocument(fixtures: [WorkoutFixture]) async throws -> FixtureDocument {
-      try FixtureDocument(archive: WorkoutFixtureArchive(fixtures: fixtures))
+      try Task.checkCancellation()
+      return try FixtureDocument(archive: WorkoutFixtureArchive(fixtures: fixtures))
     }
   }
 #endif

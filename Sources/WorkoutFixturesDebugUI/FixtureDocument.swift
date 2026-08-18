@@ -3,19 +3,22 @@
   import UniformTypeIdentifiers
   import WorkoutFixtures
 
-  /// A `FileDocument` wrapping canonical fixture or archive JSON for the
-  /// system exporter and importer.
+  /// A `FileDocument` wrapping gzip-compressed, compact fixture or archive JSON.
   public struct FixtureDocument: FileDocument, Sendable {
     public static var readableContentTypes: [UTType] { [.json, .gzip] }
 
     public let data: Data
 
     public init(fixture: WorkoutFixture) throws {
-      data = try FixtureJSONCodec().encode(fixture)
+      let json = try FixtureJSONCodec().encode(fixture, formatting: .compact)
+      try Task.checkCancellation()
+      data = try GzipCodec.compress(json)
     }
 
     public init(archive: WorkoutFixtureArchive) throws {
-      data = try FixtureArchiveJSONCodec().encode(archive)
+      let json = try FixtureArchiveJSONCodec().encode(archive, formatting: .compact)
+      try Task.checkCancellation()
+      data = try GzipCodec.compress(json)
     }
 
     public init(configuration: ReadConfiguration) throws {

@@ -168,11 +168,14 @@ public struct FixtureArchiveJSONCodec: Sendable {
   /// Encodes `archive` to canonical JSON.
   /// - Throws: ``FixtureArchiveCodingError/unsupportedSchemaVersion(_:)`` when the archive's
   ///   schema version is not ``SchemaVersion/current``.
-  public func encode(_ archive: WorkoutFixtureArchive) throws -> Data {
+  public func encode(
+    _ archive: WorkoutFixtureArchive,
+    formatting: FixtureJSONFormatting = .canonical
+  ) throws -> Data {
     guard archive.schemaVersion == .current else {
       throw FixtureArchiveCodingError.unsupportedSchemaVersion(archive.schemaVersion)
     }
-    return try CanonicalFixtureJSON.encode(archive)
+    return try CanonicalFixtureJSON.encode(archive, formatting: formatting)
   }
 
   /// The bundled JSON Schema describing the archive document format, for external validation

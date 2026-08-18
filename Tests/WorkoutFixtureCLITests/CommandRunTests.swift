@@ -31,6 +31,22 @@ struct CommandRunTests {
     }
   }
 
+  @Test("CLI commands accept gzip inputs and keep generated outputs plain JSON")
+  func commandsAcceptGzipInput() async throws {
+    let workspace = try Workspace()
+    let fixture = try WorkoutFixturePreset.outdoorRun.fixture()
+    let gzipPath = workspace.path("fixture.json.gz")
+    let json = try FixtureJSONCodec().encode(fixture, formatting: .compact)
+    try GzipCodec.compress(json).write(to: URL(fileURLWithPath: gzipPath))
+
+    try await runCommand(["validate", gzipPath])
+    let output = workspace.path("migrated.json")
+    try await runCommand(["migrate", gzipPath, "--output", output])
+    let outputData = try Data(contentsOf: URL(fileURLWithPath: output))
+    #expect(!GzipCodec.isGzipped(outputData))
+    #expect(try FixtureJSONCodec().decode(outputData) == fixture)
+  }
+
   @Test("Usage errors exit with status 64")
   func usageErrorsUseExitCode64() throws {
     let candidates: [[String]] = [

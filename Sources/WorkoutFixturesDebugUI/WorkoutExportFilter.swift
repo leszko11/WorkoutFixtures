@@ -6,8 +6,7 @@
   ///
   /// Activities and the date window are pushed into the HealthKit query; the
   /// distance, duration, and limit criteria are applied to the returned
-  /// summaries. ``includesRoutes`` controls whether captured fixtures keep
-  /// their GPS routes.
+  /// summaries. ``captureOptions`` controls which expensive HealthKit components are queried.
   public struct WorkoutExportFilter: Equatable, Sendable {
     public enum DateWindow: String, CaseIterable, Equatable, Sendable {
       case allTime
@@ -43,12 +42,33 @@
     public var minimumDistanceKilometers: Double?
     /// Excludes workouts shorter than this duration; `nil` disables the filter.
     public var minimumDurationMinutes: Double?
-    /// When false, captured fixtures have their GPS routes removed before export.
-    public var includesRoutes = true
+    /// Components captured for both individual and archive exports.
+    public var captureOptions = WorkoutFixtureCaptureOptions.peakmeLean
     /// Caps how many (filtered, newest-first) workouts are listed and exported.
     public var limit: Int?
 
     public init() {}
+
+    public subscript(captures metric: MetricIdentifier) -> Bool {
+      get { captureOptions.includedMetrics.contains(metric) }
+      set {
+        if newValue {
+          captureOptions.includedMetrics.insert(metric)
+        } else {
+          captureOptions.includedMetrics.remove(metric)
+        }
+      }
+    }
+
+    public var includesRoutes: Bool {
+      get { captureOptions.includesRoutes }
+      set { captureOptions.includesRoutes = newValue }
+    }
+
+    public var simplifiesRoutes: Bool {
+      get { captureOptions.routeSimplification == .adaptive }
+      set { captureOptions.routeSimplification = newValue ? .adaptive : .none }
+    }
 
     /// The portion of the filter that can be pushed into the workout query.
     /// The limit is deliberately not pushed down: it must apply after the
@@ -91,18 +111,4 @@
     }
   }
 
-  extension WorkoutFixture {
-    /// A copy of this fixture without its GPS route.
-    func removingRoute() -> WorkoutFixture {
-      guard route != nil else { return self }
-      return WorkoutFixture(
-        id: id,
-        workout: workout,
-        series: series,
-        events: events,
-        route: nil,
-        provenance: provenance
-      )
-    }
-  }
 #endif

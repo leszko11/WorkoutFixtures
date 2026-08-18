@@ -129,6 +129,31 @@
     }
   }
 
+  @Suite("HealthKit capture plan")
+  struct HealthKitCapturePlanTests {
+    @Test("Full capture includes every metric and routes")
+    func fullCaptureIncludesEverything() {
+      let plan = HealthKitCapturePlan(options: .full)
+      #expect(plan.metrics == MetricIdentifier.allCases)
+      #expect(plan.queriesRoutePresence)
+      #expect(plan.fetchesRoute)
+    }
+
+    @Test("Disabled components produce no HealthKit work items")
+    func disabledComponentsAreAbsent() {
+      let plan = HealthKitCapturePlan(
+        options: WorkoutFixtureCaptureOptions(
+          includedMetrics: [.distance],
+          includesRoutes: false,
+          routeSimplification: .adaptive
+        )
+      )
+      #expect(plan.metrics == [.distance])
+      #expect(!plan.queriesRoutePresence)
+      #expect(!plan.fetchesRoute)
+    }
+  }
+
   @Suite("Resolved time zone identifier")
   struct ResolvedTimeZoneIdentifierTests {
     private let fallback = TimeZone(identifier: "UTC")!

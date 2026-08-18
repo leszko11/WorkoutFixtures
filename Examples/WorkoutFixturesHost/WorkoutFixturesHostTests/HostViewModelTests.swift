@@ -10,6 +10,25 @@ private struct AuthorizingStub: HealthAuthorizing {
   func requestAuthorization(for access: HealthKitWorkoutAccess) async throws {}
 }
 
+private actor ArchiveBuilderGate {
+  private var started = false
+  private var continuation: CheckedContinuation<Void, Never>?
+
+  var hasStarted: Bool { started }
+
+  func suspend() async {
+    await withCheckedContinuation { continuation in
+      self.continuation = continuation
+      started = true
+    }
+  }
+
+  func release() {
+    continuation?.resume()
+    continuation = nil
+  }
+}
+
 @MainActor
 @Suite("Debug model")
 struct DebugModelTests {
@@ -60,6 +79,24 @@ struct DebugModelTests {
     }
   }
 
+  @Test("Gzipped fixture file import decodes and validates")
+  func gzippedFixtureFileImportValidates() async throws {
+    let fixture = try WorkoutFixturePreset.pausedWalk.fixture()
+    let fileURL = FileManager.default.temporaryDirectory
+      .appending(path: UUID().uuidString)
+      .appendingPathExtension("json.gz")
+    defer { try? FileManager.default.removeItem(at: fileURL) }
+    let json = try FixtureJSONCodec().encode(fixture, formatting: .compact)
+    try GzipCodec.compress(json).write(to: fileURL)
+
+    let (model, _) = Self.makeModel()
+    model.importFixture(from: fileURL)
+    await model.awaitCurrentOperation()
+
+    #expect(model.selectedFixture == fixture)
+    #expect(model.validationErrorCount == 0)
+  }
+
   @Test("Malformed fixture file is rejected")
   func malformedFixtureFileIsRejected() async throws {
     let fileURL = FileManager.default.temporaryDirectory
@@ -94,7 +131,7 @@ struct DebugModelTests {
     model.writeSelectedFixtureToHealthKit()
     await model.awaitCurrentOperation()
 
-    #expect(await sink.storedFixtures == [fixture])
+    #expect(await sink.storedFixtures == [fixture.applyingCaptureOptions(.peakmeLean)])
     #expect(model.lastStoredWorkout?.fixtureID == fixture.id)
   }
 
@@ -152,7 +189,7 @@ struct DebugModelTests {
     #expect(redacted.provenance.kind == .redacted)
     #expect(redacted.route == nil)
     #expect(redacted.provenance.seed == nil)
-    #expect(model.exportFilename.hasSuffix("-shareable"))
+    #expect(model.exportFilename.hasSuffix("-shareable.json.gz"))
     #expect(model.isExporting)
   }
 
@@ -168,7 +205,7 @@ struct DebugModelTests {
 
     let data = try #require(model.exportedDocument?.data)
     #expect(try FixtureJSONCodec().decode(data) == selected)
-    #expect(model.exportFilename == selected.id.rawValue)
+    #expect(model.exportFilename == "\(selected.id.rawValue).json.gz")
   }
 
   private static func invalidFixture(id: String) throws -> WorkoutFixture {
@@ -295,12 +332,33 @@ struct DebugModelTests {
     let archive = try FixtureArchiveJSONCodec().decode(data)
     #expect(Set(archive.fixtures.map(\.id)) == Set(fixtures.map(\.id)))
     #expect(archive.fixtures.first(where: { $0.route != nil })?.route?.points.isEmpty == false)
-    #expect(model.exportFilename == "workout-fixtures-archive")
+    #expect(model.exportFilename == "workout-fixtures-archive.json.gz")
     #expect(model.isExporting)
     guard case .success = model.phase else {
       Issue.record("Expected archive export to succeed, got \(model.phase)")
       return
     }
+  }
+
+  @Test("Archive export reports encoding and compression after capture")
+  func archiveExportReportsCompressionPhase() async throws {
+    let fixtures = try WorkoutFixturePreset.allFixtures()
+    let (model, _) = Self.makeModel(fixtures: fixtures)
+    let gate = ArchiveBuilderGate()
+    model.archiveDocumentBuilder = { fixtures in
+      await gate.suspend()
+      return try FixtureDocument(archive: WorkoutFixtureArchive(fixtures: fixtures))
+    }
+
+    model.prepareFullArchiveExport()
+    while await !gate.hasStarted {
+      await Task.yield()
+    }
+
+    #expect(model.phase == .working("Encoding and compressing \(fixtures.count) workouts…"))
+    await gate.release()
+    await model.awaitCurrentOperation()
+    #expect(model.isExporting)
   }
 
   @Test("Archive export with no workouts is a failure, not an empty archive")
@@ -326,7 +384,7 @@ struct DebugModelTests {
     await model.awaitCurrentOperation()
 
     // The archive export ran; the bundled-fixture load was dropped.
-    #expect(model.exportFilename == "workout-fixtures-archive")
+    #expect(model.exportFilename == "workout-fixtures-archive.json.gz")
     #expect(model.selectedFixture == nil)
   }
 
