@@ -6,8 +6,6 @@
 
   /// Failures specific to writing fixtures into HealthKit.
   public enum HealthKitImportError: Error, Equatable, Sendable, LocalizedError {
-    /// HealthKit did not provide a route builder even though the fixture has a route.
-    case routeBuilderUnavailable
     /// The workout saved but HealthKit returned no object to attach the route to; thrown only
     /// for fixtures with a route (routeless saves report `.savedUnavailable` instead).
     case finishReturnedNoWorkout
@@ -16,8 +14,6 @@
 
     public var errorDescription: String? {
       switch self {
-      case .routeBuilderUnavailable:
-        "HealthKit did not provide a workout route builder."
       case .finishReturnedNoWorkout:
         "HealthKit finished saving but the workout is temporarily unavailable."
       case .finishReturnedNoRoute:
@@ -84,6 +80,10 @@
       let samples = makeSamples(from: fixture)
       var routeBuilder: HKWorkoutRouteBuilder?
       var savedWorkout: HKWorkout?
+      // Builders raise an unrecoverable NSException when discarded after a
+      // finish call, so rollback must skip discarding once finishing started.
+      var workoutFinishAttempted = false
+      var routeFinishAttempted = false
 
       // Cancellation is cooperative only: every builder call happens inside this
       // actor-isolated method, and a thrown CancellationError reaches the single
@@ -99,12 +99,11 @@
           try await builder.addWorkoutEvents(events)
         }
         if let route = fixture.route, !route.points.isEmpty {
-          guard
-            let builder = builder.seriesBuilder(for: HealthKitTypes.route)
-              as? HKWorkoutRouteBuilder
-          else {
-            throw HealthKitImportError.routeBuilderUnavailable
-          }
+          // A standalone route builder is finished explicitly with the saved
+          // workout below. Do not use `builder.seriesBuilder(for:)`: that
+          // attached builder is finished by the workout builder itself, and
+          // finishing it manually raises.
+          let builder = HKWorkoutRouteBuilder(healthStore: healthStore, device: nil)
           routeBuilder = builder
           for chunk in route.points.map(\.location).chunked(into: 100) {
             try Task.checkCancellation()
@@ -120,6 +119,7 @@
         try await builder.addMetadata(metadata)
         try Task.checkCancellation()
         try await builder.endCollection(at: fixture.workout.endDate)
+        workoutFinishAttempted = true
         let workout = try await finish(builder)
         savedWorkout = workout
         try Task.checkCancellation()
@@ -127,6 +127,7 @@
           guard let workout else {
             throw HealthKitImportError.finishReturnedNoWorkout
           }
+          routeFinishAttempted = true
           guard try await finish(activeRouteBuilder, with: workout) != nil else {
             throw HealthKitImportError.finishReturnedNoRoute
           }
@@ -140,7 +141,9 @@
           status: workout == nil ? .savedUnavailable : .available
         )
       } catch {
-        routeBuilder?.discard()
+        if !routeFinishAttempted {
+          routeBuilder?.discard()
+        }
         if let savedWorkout {
           // The workout is already persisted; the builder must not be discarded
           // after a successful finish. Remove children before the parent, and
@@ -161,7 +164,7 @@
           if let cleanupFailure {
             throw HealthKitStoreFailure(underlying: error, cleanupError: cleanupFailure)
           }
-        } else {
+        } else if !workoutFinishAttempted {
           builder.discardWorkout()
         }
         throw error
