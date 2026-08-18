@@ -42,7 +42,10 @@ private enum FixtureInput {
   case archive(WorkoutFixtureArchive)
 
   static func load(path: String) throws -> Self {
-    let data = try Data(contentsOf: URL(fileURLWithPath: path))
+    var data = try Data(contentsOf: URL(fileURLWithPath: path))
+    if GzipCodec.isGzipped(data) {
+      data = try GzipCodec.decompress(data)
+    }
     guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
       throw FixtureCodingError.invalidTopLevel
     }

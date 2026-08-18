@@ -79,7 +79,7 @@
       }
       .fileImporter(
         isPresented: $isImportingFixture,
-        allowedContentTypes: [.json],
+        allowedContentTypes: [.json, .gzip],
         allowsMultipleSelection: false
       ) { result in
         switch result {

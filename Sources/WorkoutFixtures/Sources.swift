@@ -63,15 +63,17 @@ public struct InMemoryWorkoutSource: WorkoutFixtureSource, Sendable {
 public struct JSONWorkoutSource: WorkoutFixtureSource, Sendable {
   private let source: InMemoryWorkoutSource
 
-  /// Decodes fixtures from in-memory JSON.
-  /// - Throws: `FixtureCodingError` or `FixtureArchiveCodingError` for schema violations, and
-  ///   `DecodingError` for malformed values.
+  /// Decodes fixtures from in-memory JSON; gzipped input (`.json.gz`) is decompressed
+  /// transparently.
+  /// - Throws: `FixtureCodingError` or `FixtureArchiveCodingError` for schema violations,
+  ///   `GzipCodingError` for corrupt gzip input, and `DecodingError` for malformed values.
   public init(
     data: Data,
     fixtureCodec: FixtureJSONCodec = FixtureJSONCodec(),
     archiveCodec: FixtureArchiveJSONCodec = FixtureArchiveJSONCodec(),
     unknownFields: UnknownFieldPolicy = .reject
   ) throws {
+    let data = GzipCodec.isGzipped(data) ? try GzipCodec.decompress(data) : data
     let raw = try JSONSerialization.jsonObject(with: data)
     guard let object = raw as? [String: Any] else {
       throw FixtureCodingError.invalidTopLevel
@@ -111,13 +113,14 @@ public struct JSONWorkoutSource: WorkoutFixtureSource, Sendable {
     archiveCodec: FixtureArchiveJSONCodec = FixtureArchiveJSONCodec(),
     unknownFields: UnknownFieldPolicy = .reject
   ) throws {
-    let nested = bundle.url(
-      forResource: resource,
-      withExtension: fileExtension,
-      subdirectory: subdirectory
-    )
-    let flattened = bundle.url(forResource: resource, withExtension: fileExtension)
-    guard let url = nested ?? flattened else {
+    let candidateExtensions = [fileExtension, "\(fileExtension).gz"]
+    let candidates = candidateExtensions.flatMap { candidate in
+      [
+        bundle.url(forResource: resource, withExtension: candidate, subdirectory: subdirectory),
+        bundle.url(forResource: resource, withExtension: candidate),
+      ]
+    }
+    guard let url = candidates.compactMap(\.self).first else {
       throw CocoaError(.fileNoSuchFile)
     }
     try self.init(

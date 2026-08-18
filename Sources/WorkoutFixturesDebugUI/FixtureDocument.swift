@@ -6,7 +6,7 @@
   /// A `FileDocument` wrapping canonical fixture or archive JSON for the
   /// system exporter and importer.
   public struct FixtureDocument: FileDocument, Sendable {
-    public static var readableContentTypes: [UTType] { [.json] }
+    public static var readableContentTypes: [UTType] { [.json, .gzip] }
 
     public let data: Data
 

@@ -296,7 +296,11 @@
           url.stopAccessingSecurityScopedResource()
         }
       }
-      return try FixtureJSONCodec().decode(Data(contentsOf: url))
+      var data = try Data(contentsOf: url)
+      if GzipCodec.isGzipped(data) {
+        data = try GzipCodec.decompress(data)
+      }
+      return try FixtureJSONCodec().decode(data)
     }
 
     @concurrent

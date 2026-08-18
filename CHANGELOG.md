@@ -6,7 +6,27 @@ has not yet tagged a release.
 
 ## [Unreleased]
 
+### Fixed
+
+- `HealthKitWorkoutSink.store(_:)` no longer crashes with an uncatchable
+  `NSException` when a write fails after finishing has started: the rollback
+  path skips `discard()`/`discardWorkout()` once the corresponding finish call
+  was attempted (HealthKit raises if a builder is discarded after finishing).
+- Route writes use a standalone `HKWorkoutRouteBuilder` finished explicitly
+  with the saved workout. The previous `seriesBuilder(for:)` builder is
+  finished by the workout builder itself, so the sink's explicit finish raised
+  "This route builder is attached to a workout builder" and every fixture with
+  a route failed to store. `HealthKitImportError.routeBuilderUnavailable` was
+  removed with the guard that produced it.
+
 ### Added
+
+- Gzip transport encoding: `GzipCodec` (zlib-backed, Apple + Linux) compresses
+  and decompresses `.json.gz` fixture payloads. `JSONWorkoutSource`, the
+  `workout-fixture` CLI, and the debug panel's import flow now accept gzipped
+  fixture and archive files transparently; bundle resource lookup also falls
+  back to a `.json.gz` resource. Compression is a transport concern only —
+  the JSON wire format and schema version are unchanged.
 
 - `WorkoutActivity` now covers every non-deprecated `HKWorkoutActivityType`
   (81 activities, previously running/walking/cycling only). The fixture JSON

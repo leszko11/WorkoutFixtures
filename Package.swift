@@ -28,8 +28,14 @@ let package = Package(
     )
   ],
   targets: [
+    .systemLibrary(
+      name: "CZlib",
+      pkgConfig: "zlib",
+      providers: [.apt(["zlib1g-dev"]), .brew(["zlib"])]
+    ),
     .target(
       name: "WorkoutFixtures",
+      dependencies: ["CZlib"],
       resources: [.process("Resources")],
       swiftSettings: concurrencySettings
     ),
