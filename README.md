@@ -25,11 +25,11 @@ only in `WorkoutFixturesDebugUI` and the example host app.
 
 | Product | Purpose |
 | --- | --- |
-| `WorkoutFixtures` | Models, strict JSON codecs/schemas, validation, redaction, generation, GPX import, in-memory/JSON sources, launch configuration |
-| `WorkoutFixturesHealthKit` | Explicit authorization, HealthKit capture and replay adapters, `WorkoutStoreFactory` |
+| `WorkoutFixtures` | Models, strict JSON codecs/schemas, validation, redaction, generation, GPX import, `FixtureWorkoutStore`, launch configuration |
+| `WorkoutFixturesHealthKit` | Explicit authorization, HealthKit capture/replay, `WorkoutStoreFactory`, `HealthKitFixtureSeeder` |
 | `WorkoutFixturesTestSupport` | Deterministic presets, bundle loading, and test doubles (`InMemoryWorkoutStore`, `RecordingWorkoutSink`, `FailingWorkoutSource`) |
 | `WorkoutFixturesDebugUI` | Embeddable SwiftUI debug panel: capture, export, import, and replay fixtures from any HealthKit-entitled app |
-| `workout-fixture` | Inspect, validate, split, redact, migrate, generate, and import GPX fixtures |
+| `workout-fixture` | Inspect, validate, split, redact, migrate, summarize, generate, and import GPX fixtures |
 
 Swift Argument Parser is linked only by the CLI. The library products have no
 external dependencies.
@@ -38,7 +38,7 @@ external dependencies.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/leszko11/WorkoutFixtures.git", from: "1.0.0")
+    .package(url: "https://github.com/leszko11/WorkoutFixtures.git", from: "0.1.0")
 ]
 ```
 
@@ -82,8 +82,12 @@ let fixture = try GPXWorkoutImporter().fixture(contentsOf: gpxURL)
 
 ## Injecting mocked workouts into a running app
 
-Apps depend on the protocols (`WorkoutFixtureSource`, `WorkoutFixtureSink`,
-`WorkoutFixtureDeleting`) and build their stores once through the factory:
+Apps that already wrap HealthKit should read
+[Integrating with an Existing HealthKit Facade](Sources/WorkoutFixtures/WorkoutFixtures.docc/IntegratingHealthKitFacade.md):
+inject a ``FixtureWorkoutStore`` into your facade, or seed real HealthKit with
+``HealthKitFixtureSeeder``.
+
+Apps that adopt the package protocols build stores once through the factory:
 
 ```swift
 import WorkoutFixturesHealthKit
@@ -94,8 +98,9 @@ let (source, sink) = try WorkoutStoreFactory.make(
 ```
 
 By default the factory returns the real HealthKit adapters. When the process
-is launched with a fixture mode, it returns fixture-backed stores instead — so
-UI tests and Debug builds inject mock workouts with zero app-code changes:
+is launched with a fixture mode, it returns a validating ``FixtureWorkoutStore``
+instead — so UI tests and Debug builds inject mock workouts with zero
+app-code changes:
 
 ```swift
 let app = XCUIApplication()
@@ -125,6 +130,15 @@ let sink = HealthKitWorkoutSink(healthStore: healthStore)
 let fixture = try await source.fixture(for: workoutID)
 let stored = try await sink.store(fixture)
 ```
+
+Capture reads `HKMetadataKeyElevationAscended` / `Descended` into the fixture's
+`elevation` field (schema v2) and falls back to route altitudes when metadata is
+absent. The sink stamps the same keys on replay from
+``WorkoutFixture/resolvedAscentMeters``. Summaries expose ascent/descent so thin
+consumers can discard routes without losing climb.
+
+Use ``WorkoutFixtureCaptureOptions/fullDump`` when archiving HealthKit for
+fidelity mocks; ``lean`` is for compact UI-test fixtures only.
 
 The source pushes the query's date window, activities, sort, and limit into
 HealthKit and reads each workout's own time zone from its metadata. Option-aware

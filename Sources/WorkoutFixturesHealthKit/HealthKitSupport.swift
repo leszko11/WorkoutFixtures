@@ -47,6 +47,30 @@
     }
   }
 
+  /// A test double that always succeeds authorization without touching HealthKit.
+  public struct AlwaysAuthorizedHealthAuthorizing: HealthAuthorizing, Sendable {
+    public init() {}
+
+    public func requestAuthorization(for access: HealthKitWorkoutAccess) async throws {}
+  }
+
+  /// A test double that always refuses authorization.
+  public struct DenyingHealthAuthorizing: HealthAuthorizing, Sendable {
+    public struct Denial: Error, Sendable, LocalizedError {
+      public var errorDescription: String? {
+        "HealthKit authorization was denied by DenyingHealthAuthorizing."
+      }
+
+      public init() {}
+    }
+
+    public init() {}
+
+    public func requestAuthorization(for access: HealthKitWorkoutAccess) async throws {
+      throw Denial()
+    }
+  }
+
   enum HealthKitTypes {
     static let workout = HKObjectType.workoutType()
     static let route = HKSeriesType.workoutRoute()

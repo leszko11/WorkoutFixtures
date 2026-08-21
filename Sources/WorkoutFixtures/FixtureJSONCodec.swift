@@ -96,10 +96,46 @@ public struct FixtureJSONCodec: Sendable {
     return try CanonicalFixtureJSON.encode(fixture, formatting: formatting)
   }
 
-  /// Rewrites fixture JSON into canonical form: a strict decode followed by a canonical
-  /// encode, so the result is byte-stable regardless of the input's formatting.
+  /// Rewrites fixture JSON into the current schema: lifts migratable versions, then
+  /// canonicalizes so the result is byte-stable regardless of the input's formatting.
   public func migrate(_ data: Data) throws -> Data {
-    try encode(decode(data, unknownFields: .reject))
+    try encode(decodeMigrating(data))
+  }
+
+  /// Decodes fixtures written at any ``SchemaVersion/migratable`` version and rewrites them
+  /// to ``SchemaVersion/current``.
+  public func decodeMigrating(
+    _ data: Data,
+    unknownFields: UnknownFieldPolicy = .reject
+  ) throws -> WorkoutFixture {
+    guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+      throw FixtureCodingError.invalidTopLevel
+    }
+    guard let rawVersion = object["schemaVersion"] as? Int else {
+      throw FixtureCodingError.missingSchemaVersion
+    }
+    let version = SchemaVersion(rawValue: rawVersion)
+    guard SchemaVersion.migratable.contains(version) else {
+      throw FixtureCodingError.unsupportedSchemaVersion(version)
+    }
+    if version != .current {
+      object["schemaVersion"] = SchemaVersion.current.rawValue
+    }
+    let rewritten = try JSONSerialization.data(withJSONObject: object)
+    var fixture = try decode(rewritten, unknownFields: unknownFields)
+    if fixture.schemaVersion != .current {
+      fixture = WorkoutFixture(
+        schemaVersion: .current,
+        id: fixture.id,
+        workout: fixture.workout,
+        series: fixture.series,
+        events: fixture.events,
+        route: fixture.route,
+        elevation: fixture.elevation,
+        provenance: fixture.provenance
+      )
+    }
+    return fixture
   }
 
   /// The bundled JSON Schema describing the single-fixture document format, for external
@@ -209,6 +245,11 @@ enum StrictFixtureFields {
         }
       }
     }
+    if let elevation = root["elevation"] as? [String: Any],
+      let field = unknown(in: elevation, allowed: elevationKeys)
+    {
+      return "elevation.\(field)"
+    }
     if let provenance = root["provenance"] as? [String: Any] {
       if let field = unknown(in: provenance, allowed: provenanceKeys) {
         return "provenance.\(field)"
@@ -227,8 +268,9 @@ enum StrictFixtureFields {
   }
 
   private static let rootKeys: Set<String> = [
-    "schemaVersion", "id", "workout", "series", "events", "route", "provenance",
+    "schemaVersion", "id", "workout", "series", "events", "route", "elevation", "provenance",
   ]
+  private static let elevationKeys: Set<String> = ["ascentMeters", "descentMeters"]
   private static let workoutKeys: Set<String> = [
     "activity", "location", "startDate", "endDate", "timeZoneIdentifier",
   ]

@@ -6,11 +6,12 @@ import WorkoutFixtures
 public struct WorkoutFixtureCommand: AsyncParsableCommand {
   public static let configuration = CommandConfiguration(
     commandName: "workout-fixture",
-    abstract: "Inspect, validate, redact, migrate, split, and generate portable workout fixtures.",
-    version: "1.0.0",
+    abstract:
+      "Inspect, validate, redact, migrate, split, summarize, and generate portable workout fixtures.",
+    version: "0.1.0",
     subcommands: [
       Inspect.self, Validate.self, Split.self, Redact.self, Generate.self, Migrate.self,
-      ImportGPX.self, Schema.self,
+      Summarize.self, ImportGPX.self, Schema.self,
     ]
   )
 
@@ -24,6 +25,7 @@ public enum DiagnosticsFormat: String, ExpressibleByArgument, Sendable {
 
 extension WorkoutActivity: ExpressibleByArgument {}
 extension WorkoutLocation: ExpressibleByArgument {}
+extension FixtureMergePolicy: ExpressibleByArgument {}
 
 struct DiagnosticsOptions: ParsableArguments {
   @Option(name: .long, help: "Diagnostic output format: text or json.")
@@ -213,6 +215,7 @@ extension WorkoutFixtureCommand {
       print("Elapsed: \(Int(summary.elapsedDuration)) seconds")
       print("Distance: \(summary.distanceMeters.map { "\($0) m" } ?? "n/a")")
       print("Average heart rate: \(summary.averageHeartRate.map { "\($0) count/min" } ?? "n/a")")
+      print("Ascent: \(summary.ascentMeters.map { "\($0) m" } ?? "n/a")")
       print("Route: \(summary.hasRoute ? "yes" : "no")")
     }
   }
@@ -407,7 +410,7 @@ extension WorkoutFixtureCommand {
 
   public struct Migrate: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
-      abstract: "Validate and canonicalize a fixture to the current schema."
+      abstract: "Validate and lift a fixture to the current schema."
     )
 
     @Argument(help: "Path to the input fixture.")
@@ -422,10 +425,71 @@ extension WorkoutFixtureCommand {
 
     public func run() async throws {
       do {
-        let fixture = try CLIIO.requireFixture(at: input, command: "migrate")
+        var data = try Data(contentsOf: URL(fileURLWithPath: input))
+        if GzipCodec.isGzipped(data) {
+          data = try GzipCodec.decompress(data)
+        }
+        let migrated = try CLIIO.codec.migrate(data)
+        let fixture = try CLIIO.codec.decode(migrated)
         try WorkoutValidator().requireValid(fixture)
-        try CLIIO.write(try CLIIO.codec.encode(fixture), to: output)
+        try CLIIO.write(migrated, to: output)
         print("Wrote canonical fixture to \(output)")
+      } catch {
+        try CLIIO.fail(error, format: diagnostics.diagnosticsFormat)
+      }
+    }
+  }
+
+  public struct Summarize: AsyncParsableCommand {
+    public static let configuration = CommandConfiguration(
+      abstract:
+        "Export a thin workout-history JSON document from fixtures or archives."
+    )
+
+    @Argument(help: "Paths to fixture or archive JSON files (plain or gzipped).")
+    var inputs: [String]
+
+    @Option(name: .long, help: "Destination history JSON path.")
+    var output: String
+
+    @Option(name: .long, help: "Keep only workouts in the last N days of the newest workout.")
+    var windowDays: Int?
+
+    @Option(
+      name: .long,
+      help: "Shift every timestamp by this many whole weeks (weekday-preserving)."
+    )
+    var shiftWeeks: Int = 0
+
+    @Option(
+      name: .customLong("merge-policy"),
+      help: "Conflict policy when IDs collide: firstWins, lastWins, or rejectDuplicates."
+    )
+    var mergePolicy: FixtureMergePolicy = .firstWins
+
+    @OptionGroup var diagnostics: DiagnosticsOptions
+
+    public init() {}
+
+    public func run() async throws {
+      do {
+        var collections: [[WorkoutFixture]] = []
+        for path in inputs {
+          switch try FixtureInput.load(path: path) {
+          case .fixture(let fixture):
+            collections.append([fixture])
+          case .archive(let archive):
+            collections.append(archive.fixtures)
+          }
+        }
+        let merged = try FixtureMerger.merge(collections, policy: mergePolicy)
+        let document = try WorkoutHistoryExporter.summarize(
+          fixtures: merged,
+          windowDays: windowDays,
+          shiftWeeks: shiftWeeks
+        )
+        try CLIIO.write(try document.encode(), to: output)
+        print("Wrote \(document.workouts.count) workout(s) to \(output)")
       } catch {
         try CLIIO.fail(error, format: diagnostics.diagnosticsFormat)
       }

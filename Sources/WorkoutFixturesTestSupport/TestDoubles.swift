@@ -70,53 +70,22 @@ public struct FailingWorkoutSource: WorkoutFixtureSource {
   }
 }
 
-/// A full in-memory `WorkoutFixtureStore`: reads mirror `InMemoryWorkoutSource`
-/// exactly (both use `WorkoutQuery.apply(to:)`), stores insert, and deletes
-/// remove by external ID (which equals the fixture ID).
-public actor InMemoryWorkoutStore: WorkoutFixtureSource, WorkoutFixtureSink,
-  WorkoutFixtureDeleting
-{
-  private var fixturesByID: [WorkoutID: WorkoutFixture]
+/// A full in-memory `WorkoutFixtureStore` for tests. Skips validation so intentionally
+/// invalid fixtures can exercise error paths. App code should use ``FixtureWorkoutStore``
+/// with `validate: true` (the default).
+public typealias InMemoryWorkoutStore = FixtureWorkoutStore
 
-  /// Creates a store seeded with `fixtures`; when IDs collide, the last fixture wins.
-  public init(fixtures: [WorkoutFixture] = []) {
-    fixturesByID = Dictionary(
-      fixtures.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
-  }
-
-  public func summaries(matching query: WorkoutQuery) async throws -> [WorkoutSummary] {
-    query.apply(to: fixturesByID.values)
-  }
-
-  public func fixture(for id: WorkoutID) async throws -> WorkoutFixture {
-    guard let fixture = fixturesByID[id] else {
-      throw WorkoutFixtureSourceError.notFound(id)
-    }
-    return fixture
-  }
-
-  public func store(_ fixture: WorkoutFixture) async throws -> StoredWorkout {
-    fixturesByID[fixture.id] = fixture
-    return StoredWorkout(
-      fixtureID: fixture.id,
-      externalID: fixture.id.rawValue,
-      storedAt: fixture.workout.endDate,
-      status: .available
-    )
-  }
-
-  public func delete(externalID: String) async throws {
-    let id = WorkoutID(rawValue: externalID)
-    guard fixturesByID.removeValue(forKey: id) != nil else {
-      throw WorkoutFixtureSourceError.notFound(id)
-    }
+extension FixtureWorkoutStore {
+  /// Creates an unvalidated store for unit tests (historical `InMemoryWorkoutStore` API).
+  public static func unchecked(fixtures: [WorkoutFixture] = []) -> FixtureWorkoutStore {
+    try! FixtureWorkoutStore(fixtures: fixtures, validate: false)
   }
 }
 
 extension WorkoutFixturePreset {
   /// An in-memory store seeded with every bundled preset, for launch-time
   /// injection (`WORKOUT_FIXTURES_MODE=presets`).
-  public static func launchStore() throws -> InMemoryWorkoutStore {
-    InMemoryWorkoutStore(fixtures: try allFixtures())
+  public static func launchStore() throws -> FixtureWorkoutStore {
+    try FixtureWorkoutStore(fixtures: try allFixtures(), validate: true)
   }
 }

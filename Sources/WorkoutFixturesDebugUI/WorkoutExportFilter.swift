@@ -43,7 +43,7 @@
     /// Excludes workouts shorter than this duration; `nil` disables the filter.
     public var minimumDurationMinutes: Double?
     /// Components captured for both individual and archive exports.
-    public var captureOptions = WorkoutFixtureCaptureOptions.peakmeLean
+    public var captureOptions = WorkoutFixtureCaptureOptions.fullDump
     /// Caps how many (filtered, newest-first) workouts are listed and exported.
     public var limit: Int?
 

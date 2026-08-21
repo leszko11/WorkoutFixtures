@@ -23,9 +23,9 @@
   ///
   /// By default the factory returns the real HealthKit adapters. When the
   /// process was launched with a fixture mode (see
-  /// ``WorkoutFixtures/FixtureLaunchConfiguration``), it returns fixture-backed
-  /// stores instead, so UI tests and Debug builds can inject mock workouts
-  /// without changing any call sites:
+  /// ``WorkoutFixtures/FixtureLaunchConfiguration``), it returns a
+  /// ``FixtureWorkoutStore`` instead, so UI tests and Debug builds can inject
+  /// mock workouts without changing any call sites:
   ///
   /// ```swift
   /// let (source, sink) = try WorkoutStoreFactory.make(
@@ -33,8 +33,8 @@
   /// )
   /// ```
   public enum WorkoutStoreFactory {
-    /// The source/sink pair the factory returns; in fixture modes both are the same in-memory
-    /// store, so writes are visible to subsequent reads.
+    /// The source/sink pair the factory returns; in fixture modes both are the same
+    /// ``FixtureWorkoutStore``, so writes are visible to subsequent reads.
     public typealias Stores = (
       source: any WorkoutFixtureSource,
       sink: any WorkoutFixtureSink & WorkoutFixtureDeleting
@@ -46,7 +46,7 @@
     /// HealthKit; `presetFixtures` is invoked only in `.presets` mode.
     /// - Throws: ``WorkoutStoreFactoryError/presetFixturesUnavailable`` when `.presets` is
     ///   selected without a provider, or any error from loading and decoding the selected
-    ///   fixture JSON.
+    ///   fixture JSON (including validation failures from ``FixtureWorkoutStore``).
     public static func make(
       healthStore: @autoclosure () -> HKHealthStore = HKHealthStore(),
       configuration: FixtureLaunchConfiguration? = FixtureLaunchConfiguration(),
@@ -62,57 +62,17 @@
           HealthKitWorkoutSink(healthStore: store)
         )
       case .presets:
-        return fixtureStores(try presetFixtures())
+        return try fixtureStores(try presetFixtures())
       case .json(let url):
-        return fixtureStores(try JSONWorkoutSource(url: url).fixtures)
+        return try fixtureStores(try JSONWorkoutSource(url: url).fixtures)
       case .resource(let name):
-        return fixtureStores(try JSONWorkoutSource(bundle: .main, resource: name).fixtures)
+        return try fixtureStores(try JSONWorkoutSource(bundle: .main, resource: name).fixtures)
       }
     }
 
-    private static func fixtureStores(_ fixtures: [WorkoutFixture]) -> Stores {
-      let store = FixtureBackedStore(fixtures: fixtures)
+    private static func fixtureStores(_ fixtures: [WorkoutFixture]) throws -> Stores {
+      let store = try FixtureWorkoutStore(fixtures: fixtures, validate: true)
       return (store, store)
-    }
-  }
-
-  /// An in-memory store used when the launch environment selects fixtures:
-  /// reads share `WorkoutQuery.apply(to:)` with the portable sources, stores
-  /// insert, deletes remove by external ID (which equals the fixture ID).
-  actor FixtureBackedStore: WorkoutFixtureSource, WorkoutFixtureSink, WorkoutFixtureDeleting {
-    private var fixturesByID: [WorkoutID: WorkoutFixture]
-
-    init(fixtures: [WorkoutFixture]) {
-      fixturesByID = Dictionary(
-        fixtures.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
-    }
-
-    func summaries(matching query: WorkoutQuery) async throws -> [WorkoutSummary] {
-      query.apply(to: fixturesByID.values)
-    }
-
-    func fixture(for id: WorkoutID) async throws -> WorkoutFixture {
-      guard let fixture = fixturesByID[id] else {
-        throw WorkoutFixtureSourceError.notFound(id)
-      }
-      return fixture
-    }
-
-    func store(_ fixture: WorkoutFixture) async throws -> StoredWorkout {
-      fixturesByID[fixture.id] = fixture
-      return StoredWorkout(
-        fixtureID: fixture.id,
-        externalID: fixture.id.rawValue,
-        storedAt: fixture.workout.endDate,
-        status: .available
-      )
-    }
-
-    func delete(externalID: String) async throws {
-      let id = WorkoutID(rawValue: externalID)
-      guard fixturesByID.removeValue(forKey: id) != nil else {
-        throw WorkoutFixtureSourceError.notFound(id)
-      }
     }
   }
 #endif

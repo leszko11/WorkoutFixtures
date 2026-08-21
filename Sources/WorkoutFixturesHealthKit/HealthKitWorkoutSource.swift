@@ -189,6 +189,7 @@
         series: capturePlan.metrics.compactMap { components.series[$0] },
         events: workout.workoutEvents?.compactMap(WorkoutEvent.init(healthKitEvent:)) ?? [],
         route: components.route,
+        elevation: Self.elevation(from: workout.metadata, route: components.route),
         provenance: FixtureProvenance(
           kind: .captured,
           createdAt: workout.startDate,
@@ -246,8 +247,31 @@
         distanceMeters: distance,
         activeEnergyKilocalories: energy,
         averageHeartRate: heartRate,
+        ascentMeters: Self.metadataMeters(
+          workout.metadata?[HKMetadataKeyElevationAscended]),
+        descentMeters: Self.metadataMeters(
+          workout.metadata?[HKMetadataKeyElevationDescended]),
         hasRoute: hasRoute
       )
+    }
+
+    private static func elevation(
+      from metadata: [String: Any]?,
+      route: WorkoutRoute?
+    ) -> WorkoutElevation? {
+      let fromMetadata = WorkoutElevation(
+        ascentMeters: metadataMeters(metadata?[HKMetadataKeyElevationAscended]),
+        descentMeters: metadataMeters(metadata?[HKMetadataKeyElevationDescended])
+      )
+      if !fromMetadata.isEmpty { return fromMetadata }
+      return WorkoutElevation(
+        ascentMeters: route?.ascentMeters,
+        descentMeters: route?.descentMeters
+      )
+    }
+
+    private static func metadataMeters(_ value: Any?) -> Double? {
+      (value as? HKQuantity)?.doubleValue(for: .meter())
     }
 
     private enum CapturedComponent: Sendable {
@@ -377,6 +401,7 @@
         series: fixture.series.map { normalize($0, within: fixture.workout) },
         events: normalize(fixture.events, within: fixture.workout),
         route: fixture.route.map { normalize($0, within: fixture.workout) },
+        elevation: fixture.elevation,
         provenance: fixture.provenance
       )
     }

@@ -1,10 +1,38 @@
 # Changelog
 
 All notable changes to this project are documented in this file. The format is
-based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project
-has not yet tagged a release.
+based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.0] — 2026-08-21
+
+### Added
+
+- Schema **v2** optional `elevation` (`ascentMeters` / `descentMeters`) on fixtures so climb
+  survives route stripping. ``WorkoutSummary`` exposes ascent/descent; prefer stored elevation,
+  then route-derived values.
+- `HealthKitWorkoutSource` captures `HKMetadataKeyElevationAscended` /
+  `HKMetadataKeyElevationDescended`; the sink stamps both on replay.
+- ``FixtureWorkoutStore`` — validating in-memory store for app injection; factory fixture modes
+  use it. ``InMemoryWorkoutStore`` remains as an unvalidated test alias.
+- ``AlwaysAuthorizedHealthAuthorizing`` and ``DenyingHealthAuthorizing`` auth doubles.
+- ``HealthKitFixtureSeeder`` for seeding / removing archives in real HealthKit.
+- ``WorkoutFixtureCaptureOptions/fullDump`` and ``lean`` (``peakmeLean`` deprecated alias).
+  DebugUI defaults to full dump.
+- CLI `summarize` plus ``WorkoutHistoryDocument`` / ``FixtureMerger`` for thin history export.
+- DocC: *Integrating with an Existing HealthKit Facade* (inject / seed / thin JSON).
+- Debug panel: archive import, "Write All to HealthKit", "Remove All Imported Workouts".
+- `WorkoutRoute.ascentMeters` / `descentMeters` derived from route altitudes.
+
+### Fixed
+
+- A failed fixture import no longer discards the fixture that was already loaded.
+
+### Changed
+
+- Package dependency version guidance is `from: "0.1.0"`.
+- `workout-fixture migrate` lifts schema v1 fixtures to v2.
+
+## Unreleased
 
 ### Fixed
 

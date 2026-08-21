@@ -17,7 +17,7 @@ struct TestDoublesTests {
   func storeMatchesSource(_ query: WorkoutQuery) async throws {
     let fixtures = try WorkoutFixturePreset.allFixtures()
     let source = InMemoryWorkoutSource(fixtures: fixtures)
-    let store = InMemoryWorkoutStore(fixtures: fixtures)
+    let store = InMemoryWorkoutStore.unchecked(fixtures: fixtures)
 
     let fromSource = try await source.summaries(matching: query)
     let fromStore = try await store.summaries(matching: query)
@@ -26,7 +26,7 @@ struct TestDoublesTests {
 
   @Test("InMemoryWorkoutStore round trips store and delete")
   func storeRoundTrip() async throws {
-    let store = InMemoryWorkoutStore()
+    let store = InMemoryWorkoutStore.unchecked()
     let fixture = try WorkoutFixturePreset.outdoorRun.fixture()
 
     let stored = try await store.store(fixture)

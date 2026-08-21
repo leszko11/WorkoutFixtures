@@ -3,7 +3,13 @@ import Foundation
 /// The version of the fixture JSON schema; codecs reject anything other than ``current``.
 public struct SchemaVersion: RawRepresentable, Codable, Hashable, Sendable, Comparable {
   /// The schema version this library reads and writes.
-  public static let current = SchemaVersion(rawValue: 1)
+  public static let current = SchemaVersion(rawValue: 2)
+
+  /// Schema versions the migrate path can lift to ``current``.
+  public static let migratable: Set<SchemaVersion> = [
+    SchemaVersion(rawValue: 1),
+    SchemaVersion(rawValue: 2),
+  ]
 
   public let rawValue: Int
 
@@ -350,6 +356,25 @@ public struct FixtureProvenance: Codable, Equatable, Sendable {
   }
 }
 
+/// Total climb and descent recorded for a workout.
+///
+/// Prefer HealthKit's elevation metadata when capturing; fall back to route altitudes when
+/// metadata is absent. Stored on the fixture so climb survives route stripping.
+public struct WorkoutElevation: Codable, Equatable, Sendable {
+  public let ascentMeters: Double?
+  public let descentMeters: Double?
+
+  public init(ascentMeters: Double? = nil, descentMeters: Double? = nil) {
+    self.ascentMeters = ascentMeters
+    self.descentMeters = descentMeters
+  }
+
+  /// `true` when both components are missing.
+  public var isEmpty: Bool {
+    ascentMeters == nil && descentMeters == nil
+  }
+}
+
 /// A complete, self-contained workout recording.
 ///
 /// A fixture bundles the descriptor, metric series, timeline events, optional GPS route, and
@@ -364,6 +389,8 @@ public struct WorkoutFixture: Codable, Equatable, Sendable, Identifiable {
   public let series: [MetricSeries]
   public let events: [WorkoutEvent]
   public let route: WorkoutRoute?
+  /// Climb/descent from HealthKit metadata or derived from the route; survives route stripping.
+  public let elevation: WorkoutElevation?
   public let provenance: FixtureProvenance
 
   public init(
@@ -373,6 +400,7 @@ public struct WorkoutFixture: Codable, Equatable, Sendable, Identifiable {
     series: [MetricSeries],
     events: [WorkoutEvent] = [],
     route: WorkoutRoute? = nil,
+    elevation: WorkoutElevation? = nil,
     provenance: FixtureProvenance
   ) {
     self.schemaVersion = schemaVersion
@@ -381,7 +409,28 @@ public struct WorkoutFixture: Codable, Equatable, Sendable, Identifiable {
     self.series = series
     self.events = events
     self.route = route
+    self.elevation = elevation.flatMap { $0.isEmpty ? nil : $0 }
     self.provenance = provenance
+  }
+}
+
+extension WorkoutRoute {
+  /// Total climb along the route, summing only the positive altitude deltas.
+  public var ascentMeters: Double? {
+    let altitudes = points.compactMap(\.altitude)
+    guard altitudes.count > 1 else { return nil }
+    return zip(altitudes, altitudes.dropFirst()).reduce(0) { total, pair in
+      total + max(0, pair.1 - pair.0)
+    }
+  }
+
+  /// Total descent along the route, summing only the negative altitude deltas.
+  public var descentMeters: Double? {
+    let altitudes = points.compactMap(\.altitude)
+    guard altitudes.count > 1 else { return nil }
+    return zip(altitudes, altitudes.dropFirst()).reduce(0) { total, pair in
+      total + max(0, pair.0 - pair.1)
+    }
   }
 }
 
@@ -400,6 +449,10 @@ public struct WorkoutSummary: Codable, Equatable, Sendable, Identifiable {
   public let activeEnergyKilocalories: Double?
   /// Duration-weighted mean heart rate in count/min, or `nil` when no samples exist.
   public let averageHeartRate: Double?
+  /// Total climb in meters; prefers stored elevation, then route-derived climb.
+  public let ascentMeters: Double?
+  /// Total descent in meters; prefers stored elevation, then route-derived descent.
+  public let descentMeters: Double?
   public let hasRoute: Bool
 
   public init(
@@ -413,6 +466,8 @@ public struct WorkoutSummary: Codable, Equatable, Sendable, Identifiable {
     distanceMeters: Double?,
     activeEnergyKilocalories: Double?,
     averageHeartRate: Double?,
+    ascentMeters: Double? = nil,
+    descentMeters: Double? = nil,
     hasRoute: Bool
   ) {
     self.id = id
@@ -425,11 +480,13 @@ public struct WorkoutSummary: Codable, Equatable, Sendable, Identifiable {
     self.distanceMeters = distanceMeters
     self.activeEnergyKilocalories = activeEnergyKilocalories
     self.averageHeartRate = averageHeartRate
+    self.ascentMeters = ascentMeters
+    self.descentMeters = descentMeters
     self.hasRoute = hasRoute
   }
 
   /// Derives the summary from a fixture: totals for distance and energy, the duration-weighted
-  /// heart-rate average, and an active duration that excludes paused time.
+  /// heart-rate average, elevation, and an active duration that excludes paused time.
   public init(fixture: WorkoutFixture) {
     id = fixture.id
     activity = fixture.workout.activity
@@ -441,6 +498,8 @@ public struct WorkoutSummary: Codable, Equatable, Sendable, Identifiable {
     distanceMeters = fixture.total(for: .distance)
     activeEnergyKilocalories = fixture.total(for: .activeEnergy)
     averageHeartRate = fixture.average(for: .heartRate)
+    ascentMeters = fixture.resolvedAscentMeters
+    descentMeters = fixture.resolvedDescentMeters
     hasRoute = fixture.route?.points.isEmpty == false
   }
 }
@@ -448,6 +507,31 @@ public struct WorkoutSummary: Codable, Equatable, Sendable, Identifiable {
 extension WorkoutFixture {
   /// A listing summary derived from this fixture; computed on each access.
   public var summary: WorkoutSummary { WorkoutSummary(fixture: self) }
+
+  /// Climb in meters: stored elevation first, otherwise route-derived.
+  public var resolvedAscentMeters: Double? {
+    elevation?.ascentMeters ?? route?.ascentMeters
+  }
+
+  /// Descent in meters: stored elevation first, otherwise route-derived.
+  public var resolvedDescentMeters: Double? {
+    elevation?.descentMeters ?? route?.descentMeters
+  }
+
+  /// Elevation to persist: prefer an explicit value, otherwise derive from the route.
+  public var resolvedElevation: WorkoutElevation? {
+    if let elevation, !elevation.isEmpty { return elevation }
+    guard let ascent = route?.ascentMeters, let descent = route?.descentMeters else {
+      if let ascent = route?.ascentMeters {
+        return WorkoutElevation(ascentMeters: ascent)
+      }
+      if let descent = route?.descentMeters {
+        return WorkoutElevation(descentMeters: descent)
+      }
+      return nil
+    }
+    return WorkoutElevation(ascentMeters: ascent, descentMeters: descent)
+  }
 
   /// The series carrying `metric`, or `nil` when the fixture has none.
   public func series(for metric: MetricIdentifier) -> MetricSeries? {

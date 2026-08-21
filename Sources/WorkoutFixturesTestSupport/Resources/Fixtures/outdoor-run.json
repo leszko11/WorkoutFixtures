@@ -1,79 +1,107 @@
 {
-  "events" : [
+  "elevation": {
+    "ascentMeters": 1,
+    "descentMeters": 2
+  },
+  "events": [
     {
-      "endDate" : "2026-06-01T06:10:00.000Z",
-      "kind" : "lap",
-      "startDate" : "2026-06-01T06:00:00.000Z"
+      "endDate": "2026-06-01T06:10:00.000Z",
+      "kind": "lap",
+      "startDate": "2026-06-01T06:00:00.000Z"
     }
   ],
-  "id" : "outdoor-run",
-  "provenance" : {
-    "createdAt" : "2026-06-01T06:00:00.000Z",
-    "kind" : "authored"
+  "id": "outdoor-run",
+  "provenance": {
+    "createdAt": "2026-06-01T06:00:00.000Z",
+    "kind": "authored"
   },
-  "route" : {
-    "points" : [
+  "route": {
+    "points": [
       {
-        "altitude" : 110,
-        "date" : "2026-06-01T06:00:00.000Z",
-        "horizontalAccuracy" : 4,
-        "latitude" : 52.2297,
-        "longitude" : 21.0122,
-        "speed" : 2.8,
-        "verticalAccuracy" : 5
+        "altitude": 110,
+        "date": "2026-06-01T06:00:00.000Z",
+        "horizontalAccuracy": 4,
+        "latitude": 52.2297,
+        "longitude": 21.0122,
+        "speed": 2.8,
+        "verticalAccuracy": 5
       },
       {
-        "altitude" : 111,
-        "date" : "2026-06-01T06:10:00.000Z",
-        "horizontalAccuracy" : 4,
-        "latitude" : 52.2347,
-        "longitude" : 21.0222,
-        "speed" : 3,
-        "verticalAccuracy" : 5
+        "altitude": 111,
+        "date": "2026-06-01T06:10:00.000Z",
+        "horizontalAccuracy": 4,
+        "latitude": 52.2347,
+        "longitude": 21.0222,
+        "speed": 3,
+        "verticalAccuracy": 5
       },
       {
-        "altitude" : 109,
-        "date" : "2026-06-01T06:20:00.000Z",
-        "horizontalAccuracy" : 5,
-        "latitude" : 52.2397,
-        "longitude" : 21.0322,
-        "speed" : 2.9,
-        "verticalAccuracy" : 6
+        "altitude": 109,
+        "date": "2026-06-01T06:20:00.000Z",
+        "horizontalAccuracy": 5,
+        "latitude": 52.2397,
+        "longitude": 21.0322,
+        "speed": 2.9,
+        "verticalAccuracy": 6
       }
     ]
   },
-  "schemaVersion" : 1,
-  "series" : [
+  "schemaVersion": 2,
+  "series": [
     {
-      "metric" : "heartRate",
-      "samples" : [
-        { "endDate" : "2026-06-01T06:10:00.000Z", "startDate" : "2026-06-01T06:00:00.000Z", "value" : 142 },
-        { "endDate" : "2026-06-01T06:20:00.000Z", "startDate" : "2026-06-01T06:10:00.000Z", "value" : 151 }
+      "metric": "heartRate",
+      "samples": [
+        {
+          "endDate": "2026-06-01T06:10:00.000Z",
+          "startDate": "2026-06-01T06:00:00.000Z",
+          "value": 142
+        },
+        {
+          "endDate": "2026-06-01T06:20:00.000Z",
+          "startDate": "2026-06-01T06:10:00.000Z",
+          "value": 151
+        }
       ],
-      "unit" : "count/min"
+      "unit": "count/min"
     },
     {
-      "metric" : "distance",
-      "samples" : [
-        { "endDate" : "2026-06-01T06:10:00.000Z", "startDate" : "2026-06-01T06:00:00.000Z", "value" : 1700 },
-        { "endDate" : "2026-06-01T06:20:00.000Z", "startDate" : "2026-06-01T06:10:00.000Z", "value" : 1800 }
+      "metric": "distance",
+      "samples": [
+        {
+          "endDate": "2026-06-01T06:10:00.000Z",
+          "startDate": "2026-06-01T06:00:00.000Z",
+          "value": 1700
+        },
+        {
+          "endDate": "2026-06-01T06:20:00.000Z",
+          "startDate": "2026-06-01T06:10:00.000Z",
+          "value": 1800
+        }
       ],
-      "unit" : "m"
+      "unit": "m"
     },
     {
-      "metric" : "activeEnergy",
-      "samples" : [
-        { "endDate" : "2026-06-01T06:10:00.000Z", "startDate" : "2026-06-01T06:00:00.000Z", "value" : 105 },
-        { "endDate" : "2026-06-01T06:20:00.000Z", "startDate" : "2026-06-01T06:10:00.000Z", "value" : 115 }
+      "metric": "activeEnergy",
+      "samples": [
+        {
+          "endDate": "2026-06-01T06:10:00.000Z",
+          "startDate": "2026-06-01T06:00:00.000Z",
+          "value": 105
+        },
+        {
+          "endDate": "2026-06-01T06:20:00.000Z",
+          "startDate": "2026-06-01T06:10:00.000Z",
+          "value": 115
+        }
       ],
-      "unit" : "kcal"
+      "unit": "kcal"
     }
   ],
-  "workout" : {
-    "activity" : "running",
-    "endDate" : "2026-06-01T06:20:00.000Z",
-    "location" : "outdoor",
-    "startDate" : "2026-06-01T06:00:00.000Z",
-    "timeZoneIdentifier" : "Europe/Warsaw"
+  "workout": {
+    "activity": "running",
+    "endDate": "2026-06-01T06:20:00.000Z",
+    "location": "outdoor",
+    "startDate": "2026-06-01T06:00:00.000Z",
+    "timeZoneIdentifier": "Europe/Warsaw"
   }
 }

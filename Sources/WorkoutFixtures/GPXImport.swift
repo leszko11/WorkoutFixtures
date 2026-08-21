@@ -201,6 +201,10 @@ public struct GPXWorkoutImporter: Sendable {
       workout: workout,
       series: series,
       route: route,
+      elevation: WorkoutElevation(
+        ascentMeters: route.ascentMeters,
+        descentMeters: route.descentMeters
+      ),
       provenance: FixtureProvenance(
         kind: .authored,
         createdAt: first.date,

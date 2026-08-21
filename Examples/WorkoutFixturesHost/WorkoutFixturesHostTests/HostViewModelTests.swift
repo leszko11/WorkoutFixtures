@@ -131,7 +131,7 @@ struct DebugModelTests {
     model.writeSelectedFixtureToHealthKit()
     await model.awaitCurrentOperation()
 
-    #expect(await sink.storedFixtures == [fixture.applyingCaptureOptions(.peakmeLean)])
+    #expect(await sink.storedFixtures == [fixture.applyingCaptureOptions(.lean)])
     #expect(model.lastStoredWorkout?.fixtureID == fixture.id)
   }
 

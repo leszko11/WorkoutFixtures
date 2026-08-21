@@ -1,12 +1,12 @@
-{
+  {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://workoutfixtures.dev/schema/workout-fixture-v1.json",
+  "$id": "https://workoutfixtures.dev/schema/workout-fixture-v2.json",
   "title": "WorkoutFixtures workout fixture",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "id", "workout", "series", "events", "provenance"],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "id": { "type": "string", "minLength": 1 },
     "workout": { "$ref": "#/$defs/workout" },
     "series": {
@@ -23,12 +23,26 @@
         { "type": "null" }
       ]
     },
+    "elevation": {
+      "anyOf": [
+        { "$ref": "#/$defs/elevation" },
+        { "type": "null" }
+      ]
+    },
     "provenance": { "$ref": "#/$defs/provenance" }
   },
   "$defs": {
     "timestamp": {
       "type": "string",
       "format": "date-time"
+    },
+    "elevation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ascentMeters": { "type": ["number", "null"], "minimum": 0 },
+        "descentMeters": { "type": ["number", "null"], "minimum": 0 }
+      }
     },
     "workout": {
       "type": "object",

@@ -270,6 +270,7 @@ public struct TemplateWorkoutGenerator: WorkoutGenerating, Sendable {
       series: fixture.series,
       events: fixture.events,
       route: fixture.route,
+      elevation: fixture.elevation,
       provenance: FixtureProvenance(
         kind: .generated,
         createdAt: fixture.workout.startDate,
@@ -500,6 +501,7 @@ extension WorkoutFixture {
             )
           })
       },
+      elevation: elevation,
       provenance: FixtureProvenance(
         kind: provenance.kind,
         createdAt: shiftProvenanceCreatedAt
@@ -555,6 +557,7 @@ extension WorkoutFixture {
             )
           })
       },
+      elevation: elevation,
       provenance: provenance
     )
   }
@@ -619,6 +622,7 @@ extension WorkoutFixture {
       series: series,
       events: events,
       route: route,
+      elevation: elevation,
       provenance: provenance
     )
   }
@@ -630,6 +634,7 @@ extension WorkoutFixture {
       series: series,
       events: events,
       route: route,
+      elevation: elevation,
       provenance: provenance
     )
   }

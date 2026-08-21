@@ -87,6 +87,7 @@ struct SourceAndRedactionTests {
       series: preset.series,
       events: preset.events,
       route: preset.route,
+      elevation: preset.elevation,
       provenance: FixtureProvenance(
         kind: .captured,
         createdAt: preset.provenance.createdAt,

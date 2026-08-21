@@ -31,12 +31,19 @@ public struct WorkoutFixtureCaptureOptions: Equatable, Sendable {
   /// Full-fidelity capture matching the behavior of optionless source calls.
   public static let full = WorkoutFixtureCaptureOptions()
 
-  /// Fast defaults for Peakme-style mocks: distance plus a reduced route.
-  public static let peakmeLean = WorkoutFixtureCaptureOptions(
+  /// Full-fidelity dump of HealthKit workouts: every metric series and an unsimplified route.
+  public static let fullDump = WorkoutFixtureCaptureOptions.full
+
+  /// Compact defaults for UI-test fixtures: distance plus a reduced route.
+  public static let lean = WorkoutFixtureCaptureOptions(
     includedMetrics: [.distance],
     includesRoutes: true,
     routeSimplification: .adaptive
   )
+
+  /// - Important: Renamed to ``lean``. Prefer ``lean`` or ``fullDump``.
+  @available(*, deprecated, renamed: "lean")
+  public static let peakmeLean = lean
 }
 
 extension WorkoutFixture {
@@ -59,6 +66,17 @@ extension WorkoutFixture {
       selectedRoute = nil
     }
 
+    // Keep climb when the route is dropped: prefer stored elevation, else derive from the
+    // original route before stripping.
+    let preservedElevation =
+      elevation
+      ?? (selectedRoute == nil
+        ? WorkoutElevation(
+          ascentMeters: route?.ascentMeters,
+          descentMeters: route?.descentMeters
+        )
+        : nil)
+
     return WorkoutFixture(
       schemaVersion: schemaVersion,
       id: id,
@@ -66,6 +84,7 @@ extension WorkoutFixture {
       series: selectedSeries,
       events: events,
       route: selectedRoute,
+      elevation: preservedElevation,
       provenance: provenance
     )
   }

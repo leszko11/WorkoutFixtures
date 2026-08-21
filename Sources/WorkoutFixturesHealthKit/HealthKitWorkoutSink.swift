@@ -116,6 +116,20 @@
         if fixture.workout.location != .unknown {
           metadata[HKMetadataKeyIndoorWorkout] = fixture.workout.location == .indoor
         }
+        // Prefer captured elevation metadata; fall back to route-derived climb so apps that
+        // read HKMetadataKeyElevationAscended see the same numbers after replay.
+        if let ascent = fixture.resolvedAscentMeters, ascent > 0 {
+          metadata[HKMetadataKeyElevationAscended] = HKQuantity(
+            unit: .meter(),
+            doubleValue: ascent
+          )
+        }
+        if let descent = fixture.resolvedDescentMeters, descent > 0 {
+          metadata[HKMetadataKeyElevationDescended] = HKQuantity(
+            unit: .meter(),
+            doubleValue: descent
+          )
+        }
         try await builder.addMetadata(metadata)
         try Task.checkCancellation()
         try await builder.endCollection(at: fixture.workout.endDate)

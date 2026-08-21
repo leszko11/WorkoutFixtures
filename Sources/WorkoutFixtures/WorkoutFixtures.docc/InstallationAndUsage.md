@@ -8,7 +8,7 @@ Add WorkoutFixtures to your `Package.swift`:
 
 ```swift
 dependencies: [
-  .package(url: "https://github.com/leszko11/WorkoutFixtures.git", from: "1.0.0")
+  .package(url: "https://github.com/leszko11/WorkoutFixtures.git", from: "0.1.0")
 ]
 ```
 
@@ -22,7 +22,7 @@ Pick products per target:
 | `WorkoutFixturesHealthKit` | App target | Real `HKHealthStore` adapters and launch-time store factory |
 | `WorkoutFixturesTestSupport` | Test targets (or Debug-only targets) | Bundled presets and test doubles |
 | `WorkoutFixturesDebugUI` | App target, behind `#if DEBUG` | Drop-in capture/export/replay panel |
-| `workout-fixture` | Command line | Inspect, validate, split, redact, generate, migrate, import GPX |
+| `workout-fixture` | Command line | Inspect, validate, split, redact, generate, migrate, summarize, import GPX |
 
 Requirements: Swift 6.2 / Xcode 26 or newer; iOS 17+, watchOS 10+, or
 macOS 14+ for the HealthKit products. The portable products also build on

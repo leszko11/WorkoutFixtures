@@ -77,6 +77,13 @@ public struct WorkoutRedactor: Sendable {
       series: shifted.series,
       events: shifted.events,
       route: policy.removeRoute ? nil : shifted.route,
+      elevation: policy.removeRoute
+        ? (shifted.elevation
+          ?? WorkoutElevation(
+            ascentMeters: shifted.route?.ascentMeters,
+            descentMeters: shifted.route?.descentMeters
+          ))
+        : shifted.elevation,
       provenance: FixtureProvenance(
         kind: .redacted,
         createdAt: shifted.workout.startDate,

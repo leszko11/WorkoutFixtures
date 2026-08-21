@@ -1,18 +1,20 @@
 # The Fixture Format
 
-Schema v1: strict, canonical, and portable JSON.
+Schema v2: strict, canonical, and portable JSON.
 
 ## Shape
 
 A fixture is one workout: descriptor (activity, location, start/end, IANA time
 zone), canonical metric series (`heartRate` in `count/min`, `distance` in `m`,
 `activeEnergy` in `kcal`), events (pause/resume/lap/segment/marker), an
-optional GPS route, and provenance (captured, generated, authored, or
-redacted). An archive wraps many fixtures plus a creation date.
+optional GPS route, optional elevation (`ascentMeters` / `descentMeters`), and
+provenance (captured, generated, authored, or redacted). An archive wraps many
+fixtures plus a creation date.
 
 Summaries are always derived from the sample timeline
 (``WorkoutSummary/init(fixture:)``), so stored totals can never disagree with
-the data.
+the data. Elevation on the summary prefers the fixture's stored elevation, then
+route-derived climb.
 
 ## Strictness
 
@@ -38,6 +40,7 @@ Or from the CLI: `workout-fixture schema fixture|archive|recipe`.
 
 ## Versioning
 
-`schemaVersion` is `1` everywhere today. Changing the wire format requires a
-version bump plus coordinated updates to the schemas and the strict field
-lists.
+`schemaVersion` is `2`. Changing the wire format requires a version bump plus
+coordinated updates to the schemas and the strict field lists. Use
+`workout-fixture migrate` (or ``FixtureJSONCodec/migrate(_:)``) to lift v1
+fixtures.

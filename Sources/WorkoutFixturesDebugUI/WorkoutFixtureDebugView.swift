@@ -360,6 +360,17 @@
         Button("Load Bundled Fixture") { model.loadBundledFixture() }
           .accessibilityIdentifier("loadBundledFixture")
 
+        if model.importedFixtures.count > 1 {
+          LabeledContent("Imported workouts", value: String(model.importedFixtures.count))
+            .accessibilityIdentifier("importedFixtureCount")
+
+          Button("Write All to HealthKit") {
+            model.writeImportedFixturesToHealthKit()
+          }
+          .disabled(model.validationErrorCount > 0)
+          .accessibilityIdentifier("writeAllFixtures")
+        }
+
         if let fixture = model.selectedFixture {
           LabeledContent("ID", value: fixture.id.rawValue)
             .accessibilityIdentifier("fixtureID")
@@ -403,6 +414,13 @@
           model.removeLastImport()
         }
         .accessibilityIdentifier("removeLastImport")
+
+        if model.storedWorkouts.count > 1 {
+          Button("Remove All \(model.storedWorkouts.count) Imported Workouts", role: .destructive) {
+            model.removeImportedWorkouts()
+          }
+          .accessibilityIdentifier("removeAllImports")
+        }
       }
     }
   }
@@ -477,7 +495,8 @@
       struct PreviewAuthorizer: HealthAuthorizing {
         func requestAuthorization(for access: HealthKitWorkoutAccess) async throws {}
       }
-      let store = InMemoryWorkoutStore(fixtures: (try? WorkoutFixturePreset.allFixtures()) ?? [])
+      let store = InMemoryWorkoutStore.unchecked(
+        fixtures: (try? WorkoutFixturePreset.allFixtures()) ?? [])
       let model = WorkoutFixtureDebugModel(
         source: store,
         sink: store,

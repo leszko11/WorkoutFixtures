@@ -8,11 +8,11 @@ and the simulator.
 
 | Product | Platforms | Purpose |
 | --- | --- | --- |
-| `WorkoutFixtures` | Apple + Linux | Models, strict JSON codecs + schemas, validation, redaction, seeded generation, GPX import, in-memory/JSON sources, launch configuration |
-| `WorkoutFixturesHealthKit` | Apple only | `HealthKitWorkoutSource`/`Sink`, explicit authorization, `WorkoutStoreFactory` (launch-time fixture injection) |
+| `WorkoutFixtures` | Apple + Linux | Models, strict JSON codecs + schemas, validation, redaction, seeded generation, GPX import, `FixtureWorkoutStore`, launch configuration |
+| `WorkoutFixturesHealthKit` | Apple only | `HealthKitWorkoutSource`/`Sink`, explicit authorization, `WorkoutStoreFactory`, `HealthKitFixtureSeeder` |
 | `WorkoutFixturesTestSupport` | Apple + Linux | Bundled presets, `InMemoryWorkoutStore`, `RecordingWorkoutSink`, `FailingWorkoutSource` |
 | `WorkoutFixturesDebugUI` | iOS/macOS | Drop-in `WorkoutFixtureDebugView` debug panel (capture/export/import/replay) for any HealthKit-entitled app |
-| `workout-fixture` (CLI) | Apple + Linux | inspect, validate, split, redact, generate, migrate, import-gpx, schema |
+| `workout-fixture` (CLI) | Apple + Linux | inspect, validate, split, redact, generate, migrate, summarize, import-gpx, schema |
 
 The example host app (`Examples/WorkoutFixturesHost`) is a thin shell around
 `WorkoutFixtureDebugView` plus the HealthKit entitlement; it exists as the

@@ -43,7 +43,12 @@
     public private(set) var validationIssues: [ValidationIssue] = []
     public private(set) var selectedSampleCount = 0
     public private(set) var validationErrorCount = 0
+    /// Every fixture from the last import. A single-fixture file yields one element,
+    /// an archive yields all of them.
+    public private(set) var importedFixtures: [WorkoutFixture] = []
     public private(set) var lastStoredWorkout: StoredWorkout?
+    /// Everything written to HealthKit since the last import, so a bulk write can be undone.
+    public private(set) var storedWorkouts: [StoredWorkout] = []
     public private(set) var phase: Phase = .idle
     public private(set) var exportedDocument: FixtureDocument?
     public private(set) var exportFilename = "workout-fixture"
@@ -124,22 +129,54 @@
     }
 
     public func importFixture(from fileURL: URL) {
-      clearSelection()
       run("Importing fixture") {
-        let fixture = try await OffMainCodec.decodeFixture(at: fileURL)
-        self.selectFixture(fixture)
+        let fixtures = try await OffMainCodec.decodeFixtures(at: fileURL)
+        self.clearSelection()
+        self.importedFixtures = fixtures
+        self.selectFixture(fixtures[0])
         guard self.validationErrorCount == 0 else {
           throw FixtureImportValidationError(errorCount: self.validationErrorCount)
         }
-        return "Imported and validated fixture file."
+        return fixtures.count == 1
+          ? "Imported and validated fixture file."
+          : "Imported and validated \(fixtures.count) workouts."
       }
     }
 
     public func writeSelectedFixtureToHealthKit() {
       guard let selectedFixture else { return }
       run("Writing fixture to HealthKit") {
-        self.lastStoredWorkout = try await self.sink.store(selectedFixture)
+        let stored = try await self.sink.store(selectedFixture)
+        self.lastStoredWorkout = stored
+        self.storedWorkouts.append(stored)
         return "Fixture stored in HealthKit."
+      }
+    }
+
+    /// Writes every imported fixture. Replaying an archive one selection at a time is
+    /// impractical, and a partial write is reported rather than swallowed.
+    public func writeImportedFixturesToHealthKit() {
+      let fixtures = importedFixtures
+      guard !fixtures.isEmpty else { return }
+      run("Writing \(fixtures.count) workouts to HealthKit") {
+        var failures: [String] = []
+        for (index, fixture) in fixtures.enumerated() {
+          try Task.checkCancellation()
+          self.phase = .working("Writing workout \(index + 1) of \(fixtures.count)…")
+          do {
+            let stored = try await self.sink.store(fixture)
+            self.lastStoredWorkout = stored
+            self.storedWorkouts.append(stored)
+          } catch {
+            failures.append("\(fixture.id.rawValue): \(error.localizedDescription)")
+          }
+        }
+
+        let written = fixtures.count - failures.count
+        guard failures.isEmpty else {
+          throw BulkWriteError(written: written, total: fixtures.count, reasons: failures)
+        }
+        return "Stored \(written) workouts in HealthKit."
       }
     }
 
@@ -147,8 +184,24 @@
       guard let externalID = lastStoredWorkout?.externalID else { return }
       run("Removing imported workout") {
         try await self.sink.delete(externalID: externalID)
-        self.lastStoredWorkout = nil
+        self.storedWorkouts.removeAll { $0.externalID == externalID }
+        self.lastStoredWorkout = self.storedWorkouts.last
         return "Imported workout removed."
+      }
+    }
+
+    public func removeImportedWorkouts() {
+      let externalIDs = storedWorkouts.compactMap(\.externalID)
+      guard !externalIDs.isEmpty else { return }
+      run("Removing \(externalIDs.count) imported workouts") {
+        for (index, externalID) in externalIDs.enumerated() {
+          try Task.checkCancellation()
+          self.phase = .working("Removing workout \(index + 1) of \(externalIDs.count)…")
+          try await self.sink.delete(externalID: externalID)
+          self.storedWorkouts.removeAll { $0.externalID == externalID }
+        }
+        self.lastStoredWorkout = self.storedWorkouts.last
+        return "Removed \(externalIDs.count) imported workouts."
       }
     }
 
@@ -242,6 +295,7 @@
     }
 
     private func clearSelection() {
+      importedFixtures = []
       selectedFixture = nil
       validationIssues = []
       selectedSampleCount = 0
@@ -278,6 +332,22 @@
     }
   }
 
+  struct FixtureImportEmptyError: Error, LocalizedError {
+    var errorDescription: String? {
+      "The file contains no workouts."
+    }
+  }
+
+  struct BulkWriteError: Error, LocalizedError {
+    let written: Int
+    let total: Int
+    let reasons: [String]
+
+    var errorDescription: String? {
+      "Stored \(written) of \(total) workouts. Failures: \(reasons.joined(separator: "; "))"
+    }
+  }
+
   struct FixtureImportValidationError: Error, LocalizedError {
     let errorCount: Int
 
@@ -304,18 +374,17 @@
   /// and archives never hitch the UI.
   private enum OffMainCodec {
     @concurrent
-    static func decodeFixture(at url: URL) async throws -> WorkoutFixture {
+    static func decodeFixtures(at url: URL) async throws -> [WorkoutFixture] {
       let hasSecurityScope = url.startAccessingSecurityScopedResource()
       defer {
         if hasSecurityScope {
           url.stopAccessingSecurityScopedResource()
         }
       }
-      var data = try Data(contentsOf: url)
-      if GzipCodec.isGzipped(data) {
-        data = try GzipCodec.decompress(data)
-      }
-      return try FixtureJSONCodec().decode(data)
+      let source = try JSONWorkoutSource(data: try Data(contentsOf: url))
+      let fixtures = source.fixtures
+      guard !fixtures.isEmpty else { throw FixtureImportEmptyError() }
+      return fixtures
     }
 
     @concurrent

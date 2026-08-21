@@ -23,23 +23,28 @@ The core loop:
 ### Essentials
 
 - <doc:InstallationAndUsage>
+- <doc:IntegratingHealthKitFacade>
 - ``WorkoutFixture``
 - ``WorkoutFixtureSource``
 - ``WorkoutFixtureSink``
 - ``WorkoutFixtureDeleting``
+- ``FixtureWorkoutStore``
 
 ### Fixture data
 
 - <doc:TheFixtureFormat>
 - ``WorkoutSummary``
+- ``WorkoutElevation``
 - ``WorkoutQuery``
 - ``FixtureJSONCodec``
 - ``FixtureArchiveJSONCodec``
 - ``WorkoutValidator``
+- ``WorkoutHistoryDocument``
 
 ### Capture and privacy
 
 - <doc:CapturingRealWorkouts>
+- ``WorkoutFixtureCaptureOptions``
 - ``WorkoutRedactor``
 - ``RedactionPolicy``
 
@@ -55,3 +60,4 @@ The core loop:
 - ``InMemoryWorkoutSource``
 - ``JSONWorkoutSource``
 - ``FixtureLaunchConfiguration``
+- ``FixtureMerger``

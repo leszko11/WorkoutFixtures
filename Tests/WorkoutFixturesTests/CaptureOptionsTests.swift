@@ -54,9 +54,12 @@ struct CaptureOptionsTests {
 
   @Test("Peakme defaults capture distance and an adaptive route")
   func peakmeDefaultsAreLean() {
-    #expect(WorkoutFixtureCaptureOptions.peakmeLean.includedMetrics == [.distance])
-    #expect(WorkoutFixtureCaptureOptions.peakmeLean.includesRoutes)
-    #expect(WorkoutFixtureCaptureOptions.peakmeLean.routeSimplification == .adaptive)
+    #expect(WorkoutFixtureCaptureOptions.lean.includedMetrics == [.distance])
+    #expect(WorkoutFixtureCaptureOptions.lean.includesRoutes)
+    #expect(WorkoutFixtureCaptureOptions.lean.routeSimplification == .adaptive)
+    #expect(WorkoutFixtureCaptureOptions.fullDump.includedMetrics == Set(MetricIdentifier.allCases))
+    #expect(WorkoutFixtureCaptureOptions.fullDump.includesRoutes)
+    #expect(WorkoutFixtureCaptureOptions.fullDump.routeSimplification == .none)
   }
 }
 

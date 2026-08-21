@@ -16,6 +16,10 @@ struct CommandParsingTests {
         "--output-directory", "output",
       ],
       ["migrate", "fixture.json", "--output", "migrated.json"],
+      [
+        "summarize", "fixture.json", "--output", "history.json", "--window-days", "60",
+        "--shift-weeks", "0", "--merge-policy", "firstWins",
+      ],
       ["split", "archive.json", "--output-directory", "output"],
       ["split", "archive.json", "--output-directory", "output", "--redact", "--seed", "42"],
       ["schema", "fixture"],
